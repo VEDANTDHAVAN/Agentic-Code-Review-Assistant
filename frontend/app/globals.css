@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 210 20% 98%;
+  --foreground: 215 28% 17%;
+  --muted: 210 18% 94%;
+  --border: 214 20% 86%;
+  --primary: 188 76% 32%;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.react-flow__node {
+  border-radius: 8px;
+}
