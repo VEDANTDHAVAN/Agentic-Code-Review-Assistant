@@ -6,9 +6,13 @@ import { Dashboard } from "@/components/dashboard/Dashboard";
 
 export default function PullRequestWorkspacePage() {
   const params = useParams<{ owner: string; repo: string; prNumber: string }>();
+  const owner = decodeURIComponent(params.owner);
+  const repo = decodeURIComponent(params.repo);
+  const prNumber = Number(params.prNumber) || 1;
+
   return (
     <AuthGate>
-      <Dashboard initialReviewInput={{ github_token: "", owner: params.owner, repo: params.repo, pr_number: Number(params.prNumber) || 1 }} />
+      <Dashboard autoFetchInitial initialReviewInput={{ github_token: "", owner, repo, pr_number: prNumber }} />
     </AuthGate>
   );
 }

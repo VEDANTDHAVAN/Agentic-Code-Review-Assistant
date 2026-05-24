@@ -56,6 +56,7 @@ export function RepositoryList() {
       <div className="grid gap-3 lg:grid-cols-2">
       {sortedRepos.map((repo) => {
         const hasOpenPrs = repo.open_pr_count > 0;
+        const pullRequestsPath = `/repositories/${encodeURIComponent(repo.owner)}/${encodeURIComponent(repo.name)}/pull-requests`;
         return (
         <article key={repo.id} className={`relative overflow-hidden rounded-lg border p-4 transition hover:-translate-y-0.5 hover:shadow-lg ${hasOpenPrs ? "border-primary/50 bg-primary/10 shadow-cyan-950/10" : "border-border bg-panel opacity-80 hover:opacity-100"}`}>
           {hasOpenPrs ? <div className="absolute inset-x-0 top-0 h-1 bg-primary" /> : null}
@@ -72,7 +73,7 @@ export function RepositoryList() {
               {repo.open_pr_count} open PRs
             </span>
           </div>
-          <Link className={`mt-4 inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm font-semibold ${hasOpenPrs ? "bg-primary text-white hover:brightness-110" : "border border-border bg-panel-strong text-foreground hover:border-primary/60"}`} href={`/repositories/${repo.owner}/${repo.name}/pull-requests`}>
+          <Link className={`mt-4 inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm font-semibold ${hasOpenPrs ? "bg-primary text-white hover:brightness-110" : "border border-border bg-panel-strong text-foreground hover:border-primary/60"}`} href={pullRequestsPath}>
             {hasOpenPrs ? <GitPullRequest className="h-4 w-4" /> : <Search className="h-4 w-4" />}
             {hasOpenPrs ? "Review Open PRs" : "View Repository PRs"}
           </Link>

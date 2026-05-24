@@ -19,6 +19,8 @@ export function PullRequestList({ owner, repo }: { owner: string; repo: string }
   if (error) return <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-700 dark:text-rose-100">{error}</div>;
   if (prs.length === 0) return <div className="rounded-lg border border-dashed border-border bg-panel p-8 text-center text-sm text-muted">No open pull requests found.</div>;
 
+  const workspaceBasePath = `/repositories/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pull-requests`;
+
   return (
     <div className="space-y-3">
       {prs.map((pr) => (
@@ -35,7 +37,7 @@ export function PullRequestList({ owner, repo }: { owner: string; repo: string }
                 <span className="text-danger">-{pr.deletions}</span>
               </p>
             </div>
-            <Link className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-semibold text-white" href={`/repositories/${owner}/${repo}/pull-requests/${pr.number}`}>
+            <Link className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-semibold text-white" href={`${workspaceBasePath}/${encodeURIComponent(String(pr.number))}`}>
               <Bot className="h-4 w-4" />
               Open Review Workspace
             </Link>

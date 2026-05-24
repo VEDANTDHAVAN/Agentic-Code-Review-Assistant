@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AgentActivityPill } from "@/components/agents/AgentActivityPill";
 import { AgentActivityToast } from "@/components/agents/AgentActivityToast";
 import { AgentGraph } from "@/components/agents/AgentGraph";
@@ -16,23 +16,65 @@ import { ReviewSummary } from "@/components/review/ReviewSummary";
 import { useReviewSession } from "@/hooks/useReviewSession";
 import { useAuth } from "@/hooks/useAuth";
 import { useRecentReviews } from "@/hooks/useRecentReviews";
+import { listAIKeys } from "@/lib/api";
+import type { UserAIKeyPublic } from "@/lib/types";
 
 const initialInput = { github_token: "", owner: "", repo: "", pr_number: 1 };
 type RightTab = "findings" | "timeline" | "context";
 
-export function Dashboard({ initialReviewInput = initialInput }: { initialReviewInput?: typeof initialInput }) {
+export function Dashboard({ initialReviewInput = initialInput, autoFetchInitial = false }: { initialReviewInput?: typeof initialInput; autoFetchInitial?: boolean }) {
   const session = useReviewSession();
   const { user } = useAuth();
   const { reviews } = useRecentReviews();
   const [rightTab, setRightTab] = useState<RightTab>("findings");
+  const [savedAIKeys, setSavedAIKeys] = useState<UserAIKeyPublic[]>([]);
+  const [aiProviderError, setAIProviderError] = useState<string | null>(null);
+  const didAutoFetch = useRef(false);
+  const handleFetchRef = useRef(session.handleFetch);
   const criticalFindings = reviews.reduce((count, review) => count + (review.results?.findings ?? []).filter((finding) => String(finding.severity).toLowerCase() === "critical").length, 0);
   const pendingComments = session.findings.filter((finding) => (finding.status ?? (finding.posted ? "posted" : finding.approved ? "approved" : "pending")) === "approved").length;
+  const savedAIKey = [...savedAIKeys].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())[0] ?? null;
+  const displayedAIRuntime = session.aiRuntime ?? (savedAIKey ? { provider: savedAIKey.provider, model: savedAIKey.default_model, source: "user" } : null);
 
   const tabs: Array<{ id: RightTab; label: string; count?: number }> = [
     { id: "findings", label: "Findings", count: session.findings.length },
     { id: "timeline", label: "Timeline", count: session.events.length },
     { id: "context", label: "Context" },
   ];
+
+  useEffect(() => {
+    handleFetchRef.current = session.handleFetch;
+  }, [session.handleFetch]);
+
+  useEffect(() => {
+    if (!user?.login) {
+      const id = window.setTimeout(() => setSavedAIKeys([]), 0);
+      return () => window.clearTimeout(id);
+    }
+
+    let cancelled = false;
+    listAIKeys(user.login)
+      .then((keys) => {
+        if (!cancelled) {
+          setSavedAIKeys(keys);
+          setAIProviderError(null);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) setAIProviderError(err instanceof Error ? err.message : "Unable to load saved AI provider.");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.login]);
+
+  useEffect(() => {
+    if (!autoFetchInitial || didAutoFetch.current) return;
+    if (!initialReviewInput.owner || !initialReviewInput.repo || !initialReviewInput.pr_number) return;
+    didAutoFetch.current = true;
+    handleFetchRef.current(initialReviewInput);
+  }, [autoFetchInitial, initialReviewInput]);
 
   return (
     <AppShell status={session.status} apiStatus={session.apiStatus} jobId={session.jobId}>
@@ -55,12 +97,14 @@ export function Dashboard({ initialReviewInput = initialInput }: { initialReview
             <p className="mt-2 text-lg font-semibold text-warning">{pendingComments}</p>
           </div>
         </section>
-        <section className={`rounded-lg border p-4 ${session.aiRuntime?.source === "mock" || !session.aiRuntime ? "border-amber-500/30 bg-amber-500/10" : "border-primary/30 bg-primary/10"}`}>
+        <section className={`rounded-lg border p-4 ${displayedAIRuntime?.source === "mock" || !displayedAIRuntime ? "border-amber-500/30 bg-amber-500/10" : "border-primary/30 bg-primary/10"}`}>
           <p className="text-xs font-semibold uppercase tracking-wide text-muted">AI Provider</p>
           <p className="mt-1 text-sm font-semibold text-foreground">
-            {session.aiRuntime ? `${session.aiRuntime.provider} / ${session.aiRuntime.model}` : "Not selected yet"}
+            {displayedAIRuntime ? `${displayedAIRuntime.provider} / ${displayedAIRuntime.model}` : "Not selected yet"}
           </p>
-          {session.aiRuntime?.source === "mock" || !session.aiRuntime ? <p className="mt-1 text-xs text-muted">Mock mode is used until a BYOK or server AI key is configured.</p> : null}
+          {displayedAIRuntime?.source === "user" ? <p className="mt-1 text-xs text-muted">Saved BYOK provider will be used for new AI reviews.</p> : null}
+          {displayedAIRuntime?.source === "mock" || !displayedAIRuntime ? <p className="mt-1 text-xs text-muted">Mock mode is used until a BYOK or server AI key is configured.</p> : null}
+          {aiProviderError ? <p className="mt-1 text-xs text-danger">{aiProviderError}</p> : null}
         </section>
         <GitHubPermissionStatus />
         <GitHubForm initialInput={initialReviewInput} loading={session.loading || session.posting} onFetch={session.handleFetch} onRun={session.handleRun} />
