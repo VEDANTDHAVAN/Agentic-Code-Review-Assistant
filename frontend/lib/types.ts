@@ -145,3 +145,10 @@ export type PullRequestSummary = {
   deletions: number;
   ci_status?: string | null;
 };
+
+export type GitHubPermissionStatus = {
+  scopes: string[];
+  has_repo_scope: boolean;
+  can_post_comments: boolean;
+  warnings: string[];
+};

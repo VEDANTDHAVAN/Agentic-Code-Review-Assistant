@@ -1,5 +1,5 @@
 import { API_BASE_URL } from "./constants";
-import type { AuthState, GitHubPRInput, PRFetchResponse, PullRequestSummary, RepositorySummary, ReviewResults } from "./types";
+import type { AuthState, GitHubPermissionStatus, GitHubPRInput, PRFetchResponse, PullRequestSummary, RepositorySummary, ReviewResults } from "./types";
 
 async function parseResponse<T>(response: Response): Promise<T> {
   const text = await response.text();
@@ -127,4 +127,13 @@ export async function listPullRequests(owner: string, repo: string): Promise<Pul
   });
   const data = await parseResponse<{ pull_requests?: PullRequestSummary[] }>(response);
   return data.pull_requests ?? [];
+}
+
+export async function checkGitHubPermissions(): Promise<GitHubPermissionStatus> {
+  const token = await getClerkGitHubToken();
+  const response = await fetch(`${API_BASE_URL}/github/permissions/check`, {
+    credentials: "include",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  return parseResponse<GitHubPermissionStatus>(response);
 }
