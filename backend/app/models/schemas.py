@@ -99,3 +99,38 @@ class ReviewResultsResponse(BaseModel):
 
 class ApprovalRequest(BaseModel):
     approved: bool
+
+
+class GitHubUser(BaseModel):
+    id: int
+    login: str
+    name: str | None = None
+    avatar_url: str | None = None
+    html_url: str | None = None
+
+
+class RepositorySummary(BaseModel):
+    id: int
+    owner: str
+    name: str
+    full_name: str
+    private: bool
+    visibility: str
+    language: str | None = None
+    updated_at: str | None = None
+    open_pr_count: int = 0
+    html_url: str | None = None
+
+
+class PullRequestSummary(BaseModel):
+    number: int
+    title: str
+    author: str
+    state: str
+    html_url: str
+    base_branch: str
+    head_branch: str
+    changed_files: int = 0
+    additions: int = 0
+    deletions: int = 0
+    ci_status: str | None = None

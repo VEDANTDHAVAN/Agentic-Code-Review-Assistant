@@ -52,6 +52,65 @@ class GitHubClient:
     async def close(self) -> None:
         await self.client.aclose()
 
+    async def me(self) -> dict:
+        return (await self._get("/user")).json()
+
+    async def list_repositories(self) -> list[dict]:
+        if not self.token or get_settings().demo_mode:
+            return []
+        repos_res = await self._get("/user/repos?per_page=100&sort=updated&affiliation=owner,collaborator,organization_member")
+        repos = repos_res.json()
+        summaries = []
+        for repo in repos:
+            owner = repo.get("owner", {}).get("login", "")
+            name = repo.get("name", "")
+            open_pr_count = 0
+            if owner and name:
+                try:
+                    pulls = await self._get(f"/repos/{owner}/{name}/pulls?state=open&per_page=1")
+                    open_pr_count = int(pulls.headers.get("link", "").split("page=")[-1].split(">")[0]) if 'rel="last"' in pulls.headers.get("link", "") else len(pulls.json())
+                except HTTPException:
+                    open_pr_count = 0
+            summaries.append(
+                {
+                    "id": repo.get("id"),
+                    "owner": owner,
+                    "name": name,
+                    "full_name": repo.get("full_name"),
+                    "private": repo.get("private", False),
+                    "visibility": repo.get("visibility", "private" if repo.get("private") else "public"),
+                    "language": repo.get("language"),
+                    "updated_at": repo.get("updated_at"),
+                    "open_pr_count": open_pr_count,
+                    "html_url": repo.get("html_url"),
+                }
+            )
+        return summaries
+
+    async def list_pull_requests(self, owner: str, repo: str) -> list[dict]:
+        if not self.token or get_settings().demo_mode:
+            return []
+        pulls_res = await self._get(f"/repos/{owner}/{repo}/pulls?state=open&per_page=100")
+        pulls = pulls_res.json()
+        summaries = []
+        for pr in pulls:
+            summaries.append(
+                {
+                    "number": pr.get("number"),
+                    "title": pr.get("title", "Untitled PR"),
+                    "author": pr.get("user", {}).get("login", "unknown"),
+                    "state": pr.get("state", "open"),
+                    "html_url": pr.get("html_url", ""),
+                    "base_branch": pr.get("base", {}).get("ref", ""),
+                    "head_branch": pr.get("head", {}).get("ref", ""),
+                    "changed_files": pr.get("changed_files", 0),
+                    "additions": pr.get("additions", 0),
+                    "deletions": pr.get("deletions", 0),
+                    "ci_status": None,
+                }
+            )
+        return summaries
+
     async def fetch_pr(self, owner: str, repo: str, pr_number: int) -> PRFetchResponse:
         if not self.token or get_settings().demo_mode:
             return self.mock_pr(owner, repo, pr_number)

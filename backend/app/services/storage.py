@@ -65,6 +65,17 @@ class Storage:
                   created_at TEXT NOT NULL,
                   FOREIGN KEY(job_id) REFERENCES review_jobs(id)
                 );
+                CREATE TABLE IF NOT EXISTS oauth_sessions (
+                  session_id TEXT PRIMARY KEY,
+                  github_user_id INTEGER NOT NULL,
+                  login TEXT NOT NULL,
+                  name TEXT,
+                  avatar_url TEXT,
+                  html_url TEXT,
+                  encrypted_token TEXT NOT NULL,
+                  created_at TEXT NOT NULL,
+                  updated_at TEXT NOT NULL
+                );
                 """
             )
 
@@ -204,6 +215,42 @@ class Storage:
         values = [value for _, value in updates] + [finding_id]
         with self.connect() as conn:
             conn.execute(f"UPDATE findings SET {clause} WHERE id = ?", values)
+
+    def save_oauth_session(self, session: dict[str, Any]) -> None:
+        now = datetime.utcnow().isoformat()
+        with self.connect() as conn:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO oauth_sessions
+                (session_id, github_user_id, login, name, avatar_url, html_url, encrypted_token, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, COALESCE((SELECT created_at FROM oauth_sessions WHERE session_id = ?), ?), ?)
+                """,
+                (
+                    session["session_id"],
+                    session["github_user_id"],
+                    session["login"],
+                    session.get("name"),
+                    session.get("avatar_url"),
+                    session.get("html_url"),
+                    session["encrypted_token"],
+                    session["session_id"],
+                    now,
+                    now,
+                ),
+            )
+
+    def get_oauth_session(self, session_id: str | None) -> dict[str, Any] | None:
+        if not session_id:
+            return None
+        with self.connect() as conn:
+            row = conn.execute("SELECT * FROM oauth_sessions WHERE session_id = ?", (session_id,)).fetchone()
+        return dict(row) if row else None
+
+    def delete_oauth_session(self, session_id: str | None) -> None:
+        if not session_id:
+            return
+        with self.connect() as conn:
+            conn.execute("DELETE FROM oauth_sessions WHERE session_id = ?", (session_id,))
 
 
 storage = Storage()

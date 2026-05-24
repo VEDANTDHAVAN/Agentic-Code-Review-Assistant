@@ -2,6 +2,7 @@
 
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import { AuthGate } from "@/components/auth/AuthGate";
 import { AppShell } from "@/components/layout/AppShell";
 import { ReviewHistoryTable } from "@/components/history/ReviewHistoryTable";
 import { FindingCard } from "@/components/review/FindingCard";
@@ -43,8 +44,10 @@ function PullRequestsContent() {
 
 export default function PullRequestsPage() {
   return (
-    <Suspense fallback={<AppShell><div className="p-6 text-sm text-muted">Loading review history...</div></AppShell>}>
-      <PullRequestsContent />
-    </Suspense>
+    <AuthGate>
+      <Suspense fallback={<AppShell><div className="p-6 text-sm text-muted">Loading review history...</div></AppShell>}>
+        <PullRequestsContent />
+      </Suspense>
+    </AuthGate>
   );
 }

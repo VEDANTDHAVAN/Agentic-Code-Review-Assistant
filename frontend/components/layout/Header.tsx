@@ -2,7 +2,10 @@
 
 import { Activity, CircleCheck, CircleDashed, CircleX } from "lucide-react";
 import { Moon, Sun } from "lucide-react";
+import Image from "next/image";
+import { UserButton } from "@clerk/nextjs";
 import { useTheme } from "@/hooks/useTheme";
+import { useAuth } from "@/hooks/useAuth";
 import type { ReviewStatus } from "@/lib/types";
 
 type HeaderProps = {
@@ -22,7 +25,8 @@ const statusCopy: Record<ReviewStatus, string> = {
 
 export function Header({ status, apiStatus, jobId }: HeaderProps) {
   const StatusIcon = status === "failed" ? CircleX : status === "completed" ? CircleCheck : status === "running" ? Activity : CircleDashed;
-  const { toggleTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
+  const { user, authenticated, logout } = useAuth();
 
   return (
     <header className="flex flex-col gap-3 border-b border-border bg-panel/90 px-4 py-4 backdrop-blur md:flex-row md:items-center md:justify-between md:px-6">
@@ -40,10 +44,17 @@ export function Header({ status, apiStatus, jobId }: HeaderProps) {
           <span className={`h-2 w-2 rounded-full ${apiStatus === "error" ? "bg-danger" : apiStatus === "connected" ? "bg-success" : "bg-slate-500"}`} />
           API {apiStatus}
         </span>
-        <button aria-label="Toggle theme" className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-panel-strong text-foreground hover:border-primary/60" onClick={toggleTheme}>
+        <button aria-label="Toggle theme" className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-panel-strong text-foreground hover:border-primary/60" onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}>
           <Sun className="hidden h-4 w-4 dark:block" />
           <Moon className="h-4 w-4 dark:hidden" />
         </button>
+        {authenticated && user ? (
+          <div className="flex items-center gap-2 rounded-md border border-border bg-panel-strong px-2 py-1">
+            <span className="hidden text-xs font-medium text-foreground sm:inline">{user.login}</span>
+            <UserButton />
+            <button className="sr-only" onClick={logout}>Logout</button>
+          </div>
+        ) : null}
       </div>
     </header>
   );

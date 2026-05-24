@@ -13,13 +13,19 @@ import { DiffViewer } from "@/components/review/DiffViewer";
 import { FindingsPanel } from "@/components/review/FindingsPanel";
 import { ReviewSummary } from "@/components/review/ReviewSummary";
 import { useReviewSession } from "@/hooks/useReviewSession";
+import { useAuth } from "@/hooks/useAuth";
+import { useRecentReviews } from "@/hooks/useRecentReviews";
 
 const initialInput = { github_token: "", owner: "", repo: "", pr_number: 1 };
 type RightTab = "findings" | "timeline" | "context";
 
-export function Dashboard() {
+export function Dashboard({ initialReviewInput = initialInput }: { initialReviewInput?: typeof initialInput }) {
   const session = useReviewSession();
+  const { user } = useAuth();
+  const { reviews } = useRecentReviews();
   const [rightTab, setRightTab] = useState<RightTab>("findings");
+  const criticalFindings = reviews.reduce((count, review) => count + (review.results?.findings ?? []).filter((finding) => String(finding.severity).toLowerCase() === "critical").length, 0);
+  const pendingComments = session.findings.filter((finding) => finding.approved && !finding.posted).length;
 
   const tabs: Array<{ id: RightTab; label: string; count?: number }> = [
     { id: "findings", label: "Findings", count: session.findings.length },
@@ -30,7 +36,25 @@ export function Dashboard() {
   return (
     <AppShell status={session.status} apiStatus={session.apiStatus} jobId={session.jobId}>
       <div className="space-y-4 p-4 md:p-6">
-        <GitHubForm initialInput={initialInput} loading={session.loading || session.posting} onFetch={session.handleFetch} onRun={session.handleRun} />
+        <section className="grid gap-3 md:grid-cols-4">
+          <div className="rounded-lg border border-border bg-panel p-4">
+            <p className="text-xs uppercase tracking-wide text-muted">Connected user</p>
+            <p className="mt-2 truncate text-lg font-semibold text-foreground">{user?.login ?? "Development mode"}</p>
+          </div>
+          <div className="rounded-lg border border-border bg-panel p-4">
+            <p className="text-xs uppercase tracking-wide text-muted">Recent AI reviews</p>
+            <p className="mt-2 text-lg font-semibold text-foreground">{reviews.length}</p>
+          </div>
+          <div className="rounded-lg border border-border bg-panel p-4">
+            <p className="text-xs uppercase tracking-wide text-muted">Critical findings</p>
+            <p className="mt-2 text-lg font-semibold text-danger">{criticalFindings}</p>
+          </div>
+          <div className="rounded-lg border border-border bg-panel p-4">
+            <p className="text-xs uppercase tracking-wide text-muted">Pending comments</p>
+            <p className="mt-2 text-lg font-semibold text-warning">{pendingComments}</p>
+          </div>
+        </section>
+        <GitHubForm initialInput={initialReviewInput} loading={session.loading || session.posting} onFetch={session.handleFetch} onRun={session.handleRun} />
 
         {session.error ? <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-700 dark:text-rose-100">{session.error}</div> : null}
 

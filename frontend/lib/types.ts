@@ -104,3 +104,43 @@ export type AgentToast = {
   message: string;
   kind: "info" | "success" | "warning" | "error";
 };
+
+export type GitHubUser = {
+  id: number;
+  login: string;
+  name?: string | null;
+  avatar_url?: string | null;
+  html_url?: string | null;
+};
+
+export type AuthState = {
+  authenticated: boolean;
+  user: GitHubUser | null;
+};
+
+export type RepositorySummary = {
+  id: number;
+  owner: string;
+  name: string;
+  full_name: string;
+  private: boolean;
+  visibility: string;
+  language?: string | null;
+  updated_at?: string | null;
+  open_pr_count: number;
+  html_url?: string | null;
+};
+
+export type PullRequestSummary = {
+  number: number;
+  title: string;
+  author: string;
+  state: string;
+  html_url: string;
+  base_branch: string;
+  head_branch: string;
+  changed_files: number;
+  additions: number;
+  deletions: number;
+  ci_status?: string | null;
+};
