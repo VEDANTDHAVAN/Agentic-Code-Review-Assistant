@@ -17,7 +17,7 @@ from app.agents.pr_fetcher import PRFetcherAgent
 from app.agents.security import SecurityReviewAgent
 from app.agents.summary import SummaryAgent
 from app.models.schemas import ApprovalRequest, FindingStatusRequest, LogEvent, PostCommentRequest, ReviewResultsResponse, ReviewRunRequest
-from app.services.auth_service import token_from_request
+from app.services.github_token_provider import get_github_access_token
 from app.services.github_client import GitHubClient
 from app.services.storage import storage
 
@@ -70,7 +70,7 @@ async def run_pipeline(job_id: str, payload: ReviewRunRequest) -> None:
 @router.post("/run")
 async def run_review(payload: ReviewRunRequest, background_tasks: BackgroundTasks, request: Request):
     job_id = str(uuid.uuid4())
-    payload.github_token = payload.github_token or token_from_request(request)
+    payload.github_token = get_github_access_token(request=request) or payload.github_token
     storage.create_job(job_id, payload.owner, payload.repo, payload.pr_number)
     background_tasks.add_task(run_pipeline, job_id, payload)
     return {"job_id": job_id}
@@ -133,7 +133,7 @@ async def post_comment(payload: PostCommentRequest, request: Request):
         raise HTTPException(status_code=404, detail="Finding not found")
     if finding.status != "approved":
         raise HTTPException(status_code=400, detail="Finding must be approved before posting")
-    client = GitHubClient(payload.github_token or token_from_request(request))
+    client = GitHubClient(get_github_access_token(request=request) or payload.github_token)
     try:
         result = await client.post_finding_comment(payload.owner, payload.repo, payload.pr_number, finding)
         storage.update_finding_status(finding.id, "posted")

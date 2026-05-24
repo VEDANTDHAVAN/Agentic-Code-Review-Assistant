@@ -7,6 +7,7 @@ import { AgentGraph } from "@/components/agents/AgentGraph";
 import { AgentTimeline } from "@/components/agents/AgentTimeline";
 import { ContextInspector } from "@/components/context/ContextInspector";
 import { GitHubForm } from "@/components/github/GitHubForm";
+import { GitHubPermissionStatus } from "@/components/github/GitHubPermissionStatus";
 import { PRMetadata } from "@/components/github/PRMetadata";
 import { AppShell } from "@/components/layout/AppShell";
 import { DiffViewer } from "@/components/review/DiffViewer";
@@ -54,6 +55,7 @@ export function Dashboard({ initialReviewInput = initialInput }: { initialReview
             <p className="mt-2 text-lg font-semibold text-warning">{pendingComments}</p>
           </div>
         </section>
+        <GitHubPermissionStatus />
         <GitHubForm initialInput={initialReviewInput} loading={session.loading || session.posting} onFetch={session.handleFetch} onRun={session.handleRun} />
 
         {session.error ? <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-700 dark:text-rose-100">{session.error}</div> : null}

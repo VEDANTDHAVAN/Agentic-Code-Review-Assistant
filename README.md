@@ -1,102 +1,113 @@
-# Agentic Code Review Assistant
+# PRism AI / Agentic Code Review Assistant
 
-**AI-powered Pull Request Review Assistant for Engineering Teams.**
+PRism AI is an AI-powered Pull Request Review Assistant for Engineering Teams. It connects to GitHub, analyzes pull requests using specialized review agents, streams review progress in real time, produces actionable findings, and posts only human-approved review comments back to GitHub.
 
-Developers spend hours reviewing pull requests manually, and important bugs, security issues, performance problems, and code smells still slip through. Agentic Code Review Assistant is an MVP/prototype that connects to GitHub, reviews pull requests in real time with a modular AI-agent pipeline, streams agent activity, generates actionable findings, and lets humans approve comments before posting them back to GitHub.
+The current project is an MVP: Clerk handles app authentication, GitHub OAuth through Clerk provides repository access, and the existing FastAPI backend runs the review pipeline, SSE stream, findings workflow, and GitHub comment posting.
 
-This is not a generic GitHub dashboard. The product is focused on one workflow: helping engineering teams review pull requests faster and more reliably.
+## Project Overview
 
-## Features
+Developers spend hours reviewing pull requests manually, and important bugs, security issues, code smells, and performance bottlenecks are often missed. PRism AI focuses on one workflow: real-time AI-assisted pull request review.
 
-- GitHub OAuth login for reviewer workspace access
-- Optional manual token fallback for local development/demo mode
-- Repository list from the authenticated GitHub account
-- Open pull request list per repository
-- AI Pull Request Review Workspace centered on Monaco diff viewing
-- Real-time SSE agent timeline and activity toasts
-- React Flow agent pipeline graph
-- Security, bug, performance, and code-smell findings
-- Severity and agent filtering
-- Approve/reject review findings
-- Batch approve safe findings
-- Batch post approved comments to GitHub
-- Review history persisted locally with `/reviews/[jobId]` deep links
-- Light/dark/system theme support via `next-themes`
+Core flow:
 
-## Architecture
+1. Sign in with GitHub through Clerk.
+2. Select a repository and pull request.
+3. Fetch PR metadata, changed files, patches, and commits.
+4. Run the agentic review pipeline.
+5. Watch live SSE agent progress.
+6. Approve or reject findings.
+7. Post approved comments to GitHub.
+
+## Architecture Flowchart
 
 ```mermaid
-flowchart LR
-  User["Developer"] --> FE["Next.js PR Review Workspace"]
-  FE --> Auth["GitHub OAuth"]
-  FE --> API["FastAPI Backend"]
-  API --> GitHub["GitHub REST API"]
-  API --> Agents["Agent Pipeline"]
-  Agents --> DB["SQLite: jobs/findings/logs/sessions"]
-  API --> SSE["SSE Stream"]
-  SSE --> FE
-  FE --> Comments["Approved GitHub comments"]
-  Comments --> GitHub
+flowchart TD
+    User["Developer / Reviewer"] --> Frontend["Next.js Frontend<br/>PR Review Workspace"]
+
+    Frontend --> Clerk["Clerk Auth<br/>GitHub Social Login"]
+    Clerk --> TokenRoute["Next.js API Route<br/>/api/github-token"]
+    TokenRoute --> GitHubOAuth["GitHub OAuth Token<br/>MVP Mode"]
+
+    Frontend -->|Fetch PR / Run Review / Post Comments| FastAPI["FastAPI Backend"]
+    Frontend -->|SSE Subscribe| SSE["/review/stream/{job_id}"]
+
+    FastAPI --> GitHubClient["GitHub REST Client"]
+    GitHubClient -->|Repos, PRs, Files, Commits| GitHub["GitHub REST API"]
+
+    FastAPI --> Pipeline["Agent Pipeline"]
+    Pipeline --> Fetcher["PRFetcherAgent"]
+    Pipeline --> Context["ContextBuilderAgent"]
+    Pipeline --> Security["SecurityReviewAgent"]
+    Pipeline --> Bugs["BugDetectionAgent"]
+    Pipeline --> Perf["PerformanceReviewAgent"]
+    Pipeline --> Smells["CodeSmellAgent"]
+    Pipeline --> Summary["SummaryAgent"]
+
+    Pipeline --> SQLite["SQLite Storage<br/>jobs, logs, findings, sessions"]
+    SQLite --> SSE
+    SSE --> Frontend
+
+    Frontend -->|Approve / Reject Findings| FastAPI
+    FastAPI --> SQLite
+
+    Frontend -->|Post Approved Comments| FastAPI
+    FastAPI -->|PR Review Comment / Issue Comment| GitHub
+
+    subgraph ProductionPath["Production SaaS Path"]
+      GitHubApp["GitHub App Installation"] --> InstallationToken["Installation Access Token"]
+      InstallationToken --> GitHubClient
+    end
 ```
 
-## Tech Stack
+## Authentication Overview
 
-Backend:
-- FastAPI
-- Python
-- httpx
-- SQLite
-- GitHub REST API
-- OAuth App authentication
-- encrypted server-side token storage
-- Server-Sent Events
+### MVP Mode: Clerk OAuth
 
-Frontend:
-- Next.js App Router
-- TypeScript
-- Tailwind CSS
-- Monaco Editor
-- React Flow
-- next-themes
-- pnpm
+`GITHUB_AUTH_MODE=clerk_oauth`
 
-## Folder Structure
+- Clerk handles user authentication and session management.
+- Clerk GitHub social connection provides a GitHub OAuth access token.
+- GitHub OAuth App credentials are configured inside Clerk.
+- OAuth scopes are configured in Clerk.
+- The frontend retrieves the GitHub token through a Next.js server route and forwards it in memory to FastAPI.
+- Tokens are not stored in browser localStorage.
+
+This mode is convenient for demos and hackathon-style MVPs, but the `repo` OAuth scope is broad.
+
+### Production Mode: GitHub App
+
+`GITHUB_AUTH_MODE=github_app`
+
+- Clerk remains responsible for app identity and sessions.
+- A GitHub App handles repository access.
+- Users or organizations install the GitHub App on selected repositories.
+- The backend stores `installation_id` per user/org.
+- The backend generates short-lived installation access tokens server-side.
+- GitHub tokens are never exposed to the frontend.
+- Permissions are fine-grained and repository-scoped.
+
+GitHub App mode is intentionally not fully implemented yet. The backend contains a migration-ready auth mode flag and token-provider abstraction. If `github_app` is enabled today, token retrieval raises:
 
 ```text
-backend/
-  app/
-    api/auth.py
-    api/github.py
-    api/review.py
-    agents/
-    services/
-    models/
-frontend/
-  app/
-    dashboard/
-    repositories/
-    pull-requests/
-    reviews/
-  components/
-    auth/
-    dashboard/
-    repositories/
-    pullRequests/
-    review/
-    agents/
-    layout/
-  hooks/
-  lib/
+GitHub App mode is planned for production. Configure installation token provider.
 ```
 
-## Clerk GitHub OAuth Setup
-
-The recommended auth path uses Clerk with GitHub as a social connection.
+## Clerk Setup Steps
 
 1. Create a Clerk application.
 2. In Clerk, enable the GitHub social connection.
-3. Follow Clerk's GitHub provider setup to create/configure the GitHub OAuth App.
-4. Add these values to `frontend/.env.local`:
+3. Enable `Use custom credentials`.
+4. Create a GitHub OAuth App and copy its Client ID and Client Secret into Clerk.
+5. Configure scopes in Clerk:
+
+```text
+read:user
+user:email
+repo
+workflow
+```
+
+6. Copy Clerk environment variables into `frontend/.env.local`:
 
 ```text
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_...
@@ -104,39 +115,94 @@ CLERK_SECRET_KEY=sk_...
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 ```
 
-5. In Clerk, ensure GitHub OAuth token access is enabled for the GitHub connection so the app can retrieve the user's GitHub token server-side.
+7. Ensure Clerk can retrieve GitHub OAuth access tokens for the signed-in user.
+8. If you change scopes later, users must disconnect/reconnect GitHub or revoke the GitHub OAuth App authorization and sign in again.
 
-The frontend retrieves the GitHub OAuth token through a Next.js server route (`/api/github-token`) and sends it in-memory to the existing FastAPI review APIs. Tokens are not stored in browser localStorage.
+## GitHub OAuth App Setup For MVP
 
-## Legacy Backend OAuth Setup
-
-The backend still includes a simple GitHub OAuth implementation for development, but Clerk is the preferred product path. To use the backend OAuth fallback directly:
-
-1. Go to GitHub `Settings` -> `Developer settings` -> `OAuth Apps`.
-2. Create a new OAuth App.
-3. Set Homepage URL:
+1. Open GitHub `Settings`.
+2. Go to `Developer settings`.
+3. Open `OAuth Apps`.
+4. Create a new OAuth App.
+5. Set Homepage URL:
 
 ```text
 http://localhost:3000
 ```
 
-4. Set Authorization callback URL:
+6. Set Authorization callback URL to the callback URL shown by Clerk for the GitHub social connection.
+7. Copy the GitHub OAuth Client ID and Client Secret into Clerk.
+8. Configure scopes in Clerk:
 
 ```text
-http://localhost:8000/auth/github/callback
+read:user
+user:email
+repo
+workflow
 ```
 
-5. Copy the Client ID and Client Secret into `.env`.
+Scope meaning:
 
-OAuth scopes requested by the app:
+- `read:user`: read GitHub profile.
+- `user:email`: read verified GitHub email.
+- `repo`: read private repositories and write PR/issue comments.
+- `workflow`: access workflow-related operations if needed later.
 
-```text
-repo read:user user:email
-```
+Warning: `repo` is broad and should be used only for MVP/demo mode. Production SaaS should use a GitHub App with selected repository installation.
+
+## Required GitHub Permissions By Feature
+
+| Feature | MVP OAuth Scope | Production GitHub App Permission |
+| --- | --- | --- |
+| List repositories | `repo` | Metadata read, Contents read |
+| Fetch PRs | `repo` | Pull requests read |
+| Read PR diffs/files | `repo` | Pull requests read, Contents read |
+| Post PR comments | `repo` | Pull requests write |
+| Post issue comments | `repo` | Issues write |
+| Read GitHub Actions | `workflow` / `repo` | Actions read |
+| Resolve merge conflicts later | `repo` | Contents write, Pull requests write |
+
+## Production SaaS Recommendation
+
+For production, keep Clerk for product identity and sessions, but move GitHub repository access to a GitHub App.
+
+Recommended production architecture:
+
+- Clerk authenticates users.
+- GitHub App is installed on selected repositories.
+- Backend stores `installation_id` per user/org.
+- Backend mints installation access tokens server-side.
+- Frontend never receives GitHub tokens.
+- Backend requests only required permissions.
+
+Recommended GitHub App permissions:
+
+- Metadata: read
+- Contents: read
+- Pull requests: read/write
+- Issues: read/write
+- Actions: read
+- Checks: read
+- Commit statuses: read
+
+If a future merge conflict resolver is enabled:
+
+- Contents: write
+- Pull requests: write
+
+## Security Notes
+
+- Never store raw GitHub tokens in frontend localStorage.
+- Never log GitHub tokens.
+- Encrypt OAuth tokens if stored server-side.
+- Prefer GitHub App installation tokens in production.
+- Use least privilege permissions.
+- Use selected repository installation for teams.
+- Reconnect GitHub after scope changes so old limited tokens are replaced.
 
 ## Environment Variables
 
-Copy `.env.example` to `.env` at the project root.
+Root `.env`:
 
 ```text
 DATABASE_PATH=/data/reviews.db
@@ -144,6 +210,7 @@ CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 BACKEND_PORT=8000
 FRONTEND_URL=http://localhost:3000
 DEMO_MODE=false
+GITHUB_AUTH_MODE=clerk_oauth
 
 GITHUB_OAUTH_CLIENT_ID=
 GITHUB_OAUTH_CLIENT_SECRET=
@@ -152,11 +219,21 @@ SESSION_SECRET_KEY=change-me-use-a-long-random-string
 SESSION_COOKIE_NAME=acra_session
 
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
+CLERK_SECRET_KEY=
 ```
 
-No GitHub token is stored in browser localStorage. Clerk manages authentication, and GitHub OAuth tokens are fetched server-side only when API calls need them. Manual token entry remains available as a development fallback.
+Frontend `.env.local`:
 
-## Backend Setup
+```text
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_...
+CLERK_SECRET_KEY=sk_...
+```
+
+## Local Development Instructions
+
+Backend:
 
 ```bash
 cd backend
@@ -166,7 +243,7 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-## Frontend Setup
+Frontend:
 
 ```bash
 cd frontend
@@ -174,91 +251,92 @@ pnpm install
 pnpm dev
 ```
 
-Open:
-
-```text
-http://localhost:3000
-```
-
-## Product Workflow
+Workflow:
 
 1. Start backend.
 2. Start frontend.
-3. Open the app and click `Continue with GitHub`.
-4. Go to `/dashboard`.
-5. Review connected user, recent reviews, critical findings, and pending comments.
-6. Go to `/repositories`.
-7. Choose a repository and open its pull requests.
-8. Open a PR Review Workspace.
-9. Fetch PR details and run AI review.
-10. Watch the live agent timeline, toasts, activity pill, and graph.
-11. Inspect findings in the Review Workspace.
-12. Approve/reject findings.
-13. Post approved comments back to GitHub.
-14. Reopen completed reviews from the sidebar or `/pull-requests`.
-
-## Routes
-
-- `/` redirects to `/dashboard`
-- `/dashboard`
-- `/repositories`
-- `/repositories/[owner]/[repo]/pull-requests`
-- `/repositories/[owner]/[repo]/pull-requests/[prNumber]`
-- `/pull-requests`
-- `/reviews/[jobId]`
+3. Sign in with GitHub through Clerk.
+4. Open `/dashboard`.
+5. Confirm GitHub Permission Status.
+6. Open `/repositories`.
+7. Select a repository with active PRs.
+8. Open the PR Review Workspace.
+9. Fetch the PR.
+10. Run review.
+11. Watch SSE logs, agent graph, toasts, and activity pill.
+12. Approve or reject findings.
+13. Post approved comments to GitHub.
 
 ## API Summary
 
 Auth:
-- `GET /auth/github/login`
-- `GET /auth/github/callback`
+
+- `GET /auth/github/login` legacy backend OAuth
+- `GET /auth/github/callback` legacy backend OAuth
 - `GET /auth/github/me`
 - `POST /auth/logout`
 
 GitHub:
+
+- `GET /github/permissions/check`
 - `GET /github/repositories`
 - `GET /github/repositories/{owner}/{repo}/pulls`
 - `POST /github/pr/fetch`
 
 Review:
+
 - `POST /review/run`
 - `GET /review/stream/{job_id}`
 - `GET /review/results/{job_id}`
-- `PATCH /review/findings/{finding_id}/approval`
+- `POST /review/finding/status`
 - `POST /review/comment/post`
 
-## Demo Mode
+## Troubleshooting
 
-If OAuth is not configured, you can still use the development fallback:
+Access denied:
 
-- set `DEMO_MODE=true`, or
-- leave the token blank in the review form to use mock PR data.
+- Clerk GitHub token likely lacks required scopes.
+- Ensure `repo` is configured in Clerk for MVP mode.
+- Reconnect GitHub after scope changes.
 
-For real GitHub PR review automation, configure OAuth and keep `DEMO_MODE=false`.
+Old token does not have new scopes:
 
-## Screenshot Placeholders
+- GitHub tokens issued before a scope update remain limited.
+- Revoke the OAuth App in GitHub settings or disconnect/reconnect in Clerk, then sign in again.
 
-- Dashboard with connected GitHub user
-- Repository list with open PR counts
-- Pull Request Review Workspace
-- Agent graph and live timeline
-- Findings approval and GitHub posting
+Private repo not visible:
+
+- MVP OAuth mode requires `repo`.
+- Organization repos may require SSO or OAuth App approval.
+
+Comment posting fails:
+
+- MVP mode needs `repo`.
+- Production GitHub App mode needs Pull requests write and Issues write.
+- If line-level comments fail, backend falls back to PR-level issue comments.
+
+Rate limit:
+
+- GitHub may rate-limit OAuth tokens.
+- Retry after reset, or use GitHub App installation tokens in production.
+
+No scopes detected:
+
+- Some token types may omit `x-oauth-scopes`.
+- Use the dashboard GitHub Permission Status card and verify Clerk token configuration.
 
 ## Known Limitations
 
-- MVP OAuth sessions are stored in local SQLite.
-- Review history uses frontend localStorage fallback.
-- Repository and PR listing fetches up to 100 items.
-- CI status is reserved in the UI but not deeply integrated yet.
-- AI review logic is primarily deterministic/rule-based with a provider abstraction for future LLM enhancement.
+- GitHub App production mode is scaffolded but not implemented.
+- Review history currently uses frontend localStorage fallback.
+- Repository and PR listing fetch up to 100 items.
+- AI review logic is currently rule-based with provider abstraction for future LLM enhancement.
+- GitLab integration is not implemented yet.
 
-## Future Improvements
+## Screenshot Placeholders
 
-- GitHub App installation flow
-- GitLab integration
-- Backend-persisted review history
-- PR webhook-triggered real-time review
-- Team-level review policies
-- LLM-assisted semantic review
-- SARIF/code scanning export
-- Organization dashboards and reviewer analytics
+- Dashboard with GitHub Permission Status
+- Repository list highlighting active PR repos
+- PR Review Workspace with Monaco diff viewer
+- Findings approval/rejection workflow
+- Agent graph and real-time timeline

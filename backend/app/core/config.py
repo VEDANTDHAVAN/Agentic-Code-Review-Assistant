@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     backend_port: int = 8000
     frontend_url: str = "http://localhost:3000"
     demo_mode: bool = False
+    github_auth_mode: str = "clerk_oauth"
     github_oauth_client_id: str | None = None
     github_oauth_client_secret: str | None = None
     github_oauth_callback_url: str = "http://localhost:8000/auth/github/callback"
@@ -25,3 +26,7 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
+
+def is_github_app_mode() -> bool:
+    return get_settings().github_auth_mode == "github_app"
