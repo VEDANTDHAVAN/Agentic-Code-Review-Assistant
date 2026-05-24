@@ -17,8 +17,8 @@ export function Sidebar() {
           <Bot className="h-5 w-5" />
         </div>
         <div>
-          <p className="text-sm font-semibold text-foreground">Agentic Code</p>
-          <p className="text-xs text-muted">Review Assistant</p>
+          <p className="text-sm font-semibold text-foreground">Agentic Code Review</p>
+          <p className="text-sm font-bold text-foreground">Assistant</p>
         </div>
       </Link>
 

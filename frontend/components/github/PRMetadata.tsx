@@ -31,23 +31,23 @@ export function PRMetadata({ pr }: PRMetadataProps) {
             <GitPullRequest className="h-4 w-4" />
             Pull request metadata
           </div>
-          <h2 className="truncate text-lg font-semibold text-white">{metadata.title ?? "Untitled pull request"}</h2>
+          <h2 className="truncate text-lg font-semibold text-foreground">{metadata.title ?? "Untitled pull request"}</h2>
           <p className="mt-1 text-sm text-slate-400">
             {metadata.author ? `Opened by ${metadata.author}` : "Author unavailable"} | {metadata.state ?? "unknown"} | {metadata.changed_files ?? files.length} changed file(s)
           </p>
         </div>
         {typeof metadata.html_url === "string" && metadata.html_url ? (
-          <a className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-white/5 px-3 text-sm text-slate-200 hover:bg-white/10" href={metadata.html_url} target="_blank" rel="noreferrer">
+          <a className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-panel-strong px-3 text-sm text-foreground hover:border-primary/60" href={metadata.html_url} target="_blank" rel="noreferrer">
             Open PR
             <ExternalLink className="h-4 w-4" />
           </a>
         ) : null}
       </div>
       <div className="mt-4 flex flex-wrap gap-2">
-        <span className="rounded-md border border-border bg-[#090f1b] px-3 py-1.5 text-xs text-slate-300">Base: {metadata.base_branch ?? "unknown"}</span>
-        <span className="rounded-md border border-border bg-[#090f1b] px-3 py-1.5 text-xs text-slate-300">Head: {metadata.head_branch ?? "unknown"}</span>
-        <span className="rounded-md border border-border bg-[#090f1b] px-3 py-1.5 text-xs text-emerald-200">+{metadata.additions ?? 0}</span>
-        <span className="rounded-md border border-border bg-[#090f1b] px-3 py-1.5 text-xs text-rose-200">-{metadata.deletions ?? 0}</span>
+        <span className="rounded-md border border-border bg-panel-strong px-3 py-1.5 text-xs text-muted">Base: {metadata.base_branch ?? "unknown"}</span>
+        <span className="rounded-md border border-border bg-panel-strong px-3 py-1.5 text-xs text-muted">Head: {metadata.head_branch ?? "unknown"}</span>
+        <span className="rounded-md border border-border bg-panel-strong px-3 py-1.5 text-xs text-success">+{metadata.additions ?? 0}</span>
+        <span className="rounded-md border border-border bg-panel-strong px-3 py-1.5 text-xs text-danger">-{metadata.deletions ?? 0}</span>
       </div>
     </section>
   );

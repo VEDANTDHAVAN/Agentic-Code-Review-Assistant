@@ -64,7 +64,7 @@ export function DiffViewer({ pr, selectedFile, selectedFinding, loading = false,
 
       <div className="min-h-0 flex-1 overflow-hidden">
         {monacoFailed ? (
-          <pre className="h-full overflow-auto bg-[#050812] p-4 font-mono text-xs leading-5 text-slate-200 scrollbar-thin">{viewerText}</pre>
+          <pre className="h-full overflow-auto bg-background p-4 font-mono text-xs leading-5 text-foreground scrollbar-thin">{viewerText}</pre>
         ) : (
           <Editor
             key={`${activeFile?.filename ?? "empty"}-${highlightedLine ?? "none"}`}
