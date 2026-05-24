@@ -1,4 +1,6 @@
-export type GitHubInput = {
+export type ReviewStatus = "idle" | "fetching" | "ready" | "running" | "completed" | "failed";
+
+export type GitHubPRInput = {
   github_token?: string;
   owner: string;
   repo: string;
@@ -6,64 +8,73 @@ export type GitHubInput = {
 };
 
 export type PRMetadata = {
-  title: string;
-  author: string;
-  state: string;
-  html_url: string;
-  base_branch: string;
-  head_branch: string;
+  title?: string;
+  author?: string;
+  state?: string;
+  html_url?: string;
+  base_branch?: string;
+  head_branch?: string;
+  [key: string]: unknown;
 };
 
 export type ChangedFile = {
   filename: string;
-  status: string;
-  additions: number;
-  deletions: number;
-  patch: string;
+  status?: string;
+  additions?: number;
+  deletions?: number;
+  patch?: string;
+  [key: string]: unknown;
 };
 
 export type PRFetchResponse = {
-  pr_metadata: PRMetadata;
-  files: ChangedFile[];
-  diffs: Record<string, string>;
-  from_mock: boolean;
+  pr_metadata?: PRMetadata;
+  metadata?: PRMetadata;
+  files?: ChangedFile[];
+  changed_files?: ChangedFile[];
+  diffs?: Record<string, string>;
+  [key: string]: unknown;
 };
+
+export type Severity = "critical" | "high" | "medium" | "low" | "info";
 
 export type Finding = {
   id: string;
-  agent: string;
+  agent?: string | null;
   file_path?: string | null;
   line_number?: number | null;
-  severity: "low" | "medium" | "high" | "critical";
-  title: string;
-  explanation: string;
-  suggestion: string;
+  severity?: Severity | string;
+  title?: string;
+  explanation?: string;
+  suggestion?: string;
   code_snippet?: string | null;
-  approved: boolean;
-  posted: boolean;
+  approved?: boolean;
+  posted?: boolean;
+  [key: string]: unknown;
 };
 
-export type LogEvent = {
-  id?: number;
-  job_id: string;
-  type: string;
-  message: string;
+export type ReviewLogEvent = {
+  id?: string | number;
+  type?: string;
+  message?: string;
   agent?: string | null;
-  metadata: Record<string, unknown>;
-  created_at: string;
+  metadata?: Record<string, unknown>;
+  created_at?: string;
+  [key: string]: unknown;
 };
 
 export type ReviewResults = {
-  job: {
-    id: string;
-    status: "queued" | "running" | "completed" | "failed";
-    owner: string;
-    repo: string;
-    pr_number: number;
-    created_at: string;
-    completed_at?: string | null;
-  };
   findings: Finding[];
   summary?: string | null;
-  logs: LogEvent[];
+  job?: {
+    id?: string;
+    status?: string;
+    [key: string]: unknown;
+  };
+  logs?: ReviewLogEvent[];
+  [key: string]: unknown;
+};
+
+export type ApiError = {
+  message: string;
+  status?: number;
 };

@@ -1,23 +1,37 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 :root {
-  --background: 210 20% 98%;
-  --foreground: 215 28% 17%;
-  --muted: 210 18% 94%;
-  --border: 214 20% 86%;
-  --primary: 188 76% 32%;
+  --background: #070a12;
+  --foreground: #e5edf6;
+  --panel: #0d1320;
+  --panel-strong: #111a2c;
+  --border: #1e293b;
+  --muted: #94a3b8;
+  --primary: #38bdf8;
+  --success: #34d399;
+  --warning: #f59e0b;
+  --danger: #fb7185;
 }
 
-* {
-  box-sizing: border-box;
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-panel: var(--panel);
+  --color-panel-strong: var(--panel-strong);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-primary: var(--primary);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
 }
 
 body {
-  margin: 0;
-  background: hsl(var(--background));
-  color: hsl(var(--foreground));
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
 
 button,
@@ -25,6 +39,19 @@ input {
   font: inherit;
 }
 
-.react-flow__node {
-  border-radius: 8px;
+* {
+  box-sizing: border-box;
+}
+
+::selection {
+  background: rgba(56, 189, 248, 0.28);
+}
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #334155 transparent;
+}
+
+.react-flow__attribution {
+  display: none;
 }

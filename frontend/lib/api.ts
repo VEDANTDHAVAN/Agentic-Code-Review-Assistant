@@ -1,50 +1,58 @@
-import { Finding, GitHubInput, PRFetchResponse, ReviewResults } from "./types";
+import { API_BASE_URL } from "./constants";
+import type { GitHubPRInput, PRFetchResponse, ReviewResults } from "./types";
 
-export const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+async function parseResponse<T>(response: Response): Promise<T> {
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : null;
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || `Request failed: ${res.status}`);
+  if (!response.ok) {
+    const detail = typeof data?.detail === "string" ? data.detail : response.statusText;
+    throw new Error(detail || `Request failed with status ${response.status}`);
   }
-  return res.json();
+
+  return data as T;
 }
 
-export function fetchPr(input: GitHubInput) {
-  return request<PRFetchResponse>("/github/pr/fetch", {
+async function postJSON<TResponse, TPayload>(path: string, payload: TPayload): Promise<TResponse> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
     method: "POST",
-    body: JSON.stringify(input),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  return parseResponse<TResponse>(response);
+}
+
+export function fetchPR(input: GitHubPRInput): Promise<PRFetchResponse> {
+  return postJSON<PRFetchResponse, GitHubPRInput>("/github/pr/fetch", input);
+}
+
+export function runReview(input: GitHubPRInput): Promise<{ job_id: string }> {
+  return postJSON<{ job_id: string }, GitHubPRInput>("/review/run", input);
+}
+
+export async function getReviewResults(jobId: string): Promise<ReviewResults> {
+  const response = await fetch(`${API_BASE_URL}/review/results/${encodeURIComponent(jobId)}`);
+  const data = await parseResponse<unknown>(response);
+
+  if (Array.isArray(data)) {
+    return { findings: data };
+  }
+
+  const record = (data ?? {}) as Record<string, unknown>;
+  return {
+    ...record,
+    findings: Array.isArray(record.findings) ? record.findings : [],
+  } as ReviewResults;
+}
+
+export function postReviewComment(input: GitHubPRInput, commentId: string): Promise<{ ok?: boolean; [key: string]: unknown }> {
+  return postJSON("/review/comment/post", {
+    ...input,
+    comment_id: commentId,
   });
 }
 
-export function runReview(input: GitHubInput) {
-  return request<{ job_id: string }>("/review/run", {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
-}
-
-export function getResults(jobId: string) {
-  return request<ReviewResults>(`/review/results/${jobId}`);
-}
-
-export function setApproval(findingId: string, approved: boolean) {
-  return request<{ ok: boolean }>(`/review/findings/${findingId}/approval`, {
-    method: "PATCH",
-    body: JSON.stringify({ approved }),
-  });
-}
-
-export function postComment(input: GitHubInput, finding: Finding) {
-  return request<{ ok: boolean }>("/review/comment/post", {
-    method: "POST",
-    body: JSON.stringify({ ...input, comment_id: finding.id }),
-  });
+export function createReviewStream(jobId: string): EventSource {
+  return new EventSource(`${API_BASE_URL}/review/stream/${encodeURIComponent(jobId)}`);
 }

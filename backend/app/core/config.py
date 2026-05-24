@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     app_name: str = "Agentic Code Review Assistant"
-    database_path: str = "backend/data/reviews.db"
+    database_path: str = "data/reviews.db"
     openai_api_key: str | None = None
     gemini_api_key: str | None = None
     anthropic_api_key: str | None = None
