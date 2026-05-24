@@ -55,6 +55,7 @@ export type Finding = {
   code_snippet?: string | null;
   approved?: boolean;
   posted?: boolean;
+  status?: "pending" | "approved" | "rejected" | "posted";
   [key: string]: unknown;
 };
 

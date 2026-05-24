@@ -2,7 +2,6 @@
 
 import { Activity, CircleCheck, CircleDashed, CircleX } from "lucide-react";
 import { Moon, Sun } from "lucide-react";
-import Image from "next/image";
 import { UserButton } from "@clerk/nextjs";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/hooks/useAuth";

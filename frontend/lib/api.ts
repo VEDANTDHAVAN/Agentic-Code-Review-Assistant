@@ -84,6 +84,17 @@ export async function updateFindingApproval(findingId: string, approved: boolean
   return parseResponse(response);
 }
 
+export async function updateFindingStatus(findingId: string, status: "approved" | "rejected"): Promise<{ ok?: boolean; status?: string; [key: string]: unknown }> {
+  const response = await fetch(`${API_BASE_URL}/review/finding/status`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ finding_id: findingId, status }),
+  });
+
+  return parseResponse(response);
+}
+
 export function createReviewStream(jobId: string): EventSource {
   return new EventSource(`${API_BASE_URL}/review/stream/${encodeURIComponent(jobId)}`);
 }
@@ -99,13 +110,21 @@ export async function logout(): Promise<void> {
 }
 
 export async function listRepositories(): Promise<RepositorySummary[]> {
-  const response = await fetch(`${API_BASE_URL}/github/repositories`, { credentials: "include" });
+  const token = await getClerkGitHubToken();
+  const response = await fetch(`${API_BASE_URL}/github/repositories`, {
+    credentials: "include",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
   const data = await parseResponse<{ repositories?: RepositorySummary[] }>(response);
   return data.repositories ?? [];
 }
 
 export async function listPullRequests(owner: string, repo: string): Promise<PullRequestSummary[]> {
-  const response = await fetch(`${API_BASE_URL}/github/repositories/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls`, { credentials: "include" });
+  const token = await getClerkGitHubToken();
+  const response = await fetch(`${API_BASE_URL}/github/repositories/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls`, {
+    credentials: "include",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
   const data = await parseResponse<{ pull_requests?: PullRequestSummary[] }>(response);
   return data.pull_requests ?? [];
 }

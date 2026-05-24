@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 
 Severity = Literal["low", "medium", "high", "critical"]
+FindingStatus = Literal["pending", "approved", "rejected", "posted"]
 
 
 class GitHubPRFetchRequest(BaseModel):
@@ -68,6 +69,7 @@ class Finding(BaseModel):
     code_snippet: str | None = None
     approved: bool = False
     posted: bool = False
+    status: FindingStatus = "pending"
 
 
 class LogEvent(BaseModel):
@@ -99,6 +101,11 @@ class ReviewResultsResponse(BaseModel):
 
 class ApprovalRequest(BaseModel):
     approved: bool
+
+
+class FindingStatusRequest(BaseModel):
+    finding_id: str
+    status: Literal["approved", "rejected"]
 
 
 class GitHubUser(BaseModel):

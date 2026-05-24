@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { createReviewStream, fetchPR, getReviewResults, postReviewComment, runReview, updateFindingApproval } from "@/lib/api";
+import { createReviewStream, fetchPR, getReviewResults, postReviewComment, runReview, updateFindingStatus } from "@/lib/api";
 import { AGENT_PIPELINE, SEVERITY_ORDER } from "@/lib/constants";
 import type { AgentToast, ChangedFile, Finding, GitHubPRInput, PRFetchResponse, ReviewLogEvent, ReviewStatus } from "@/lib/types";
 import { useRecentReviews } from "./useRecentReviews";
@@ -165,15 +165,17 @@ export function useReviewSession() {
     return () => source.close();
   }, [addToast, finishRun, jobId, status]);
 
-  async function approveFinding(id: string, approved: boolean) {
+  async function updateStatus(id: string, status: "approved" | "rejected") {
     const previousFindings = findings;
     const previousSelected = selectedFinding;
     setError(null);
-    setFindings((current) => current.map((finding) => (finding.id === id ? { ...finding, approved } : finding)));
-    setSelectedFinding((current) => (current?.id === id ? { ...current, approved } : current));
+    const approved = status === "approved";
+    setFindings((current) => current.map((finding) => (finding.id === id ? { ...finding, status, approved, posted: false } : finding)));
+    setSelectedFinding((current) => (current?.id === id ? { ...current, status, approved, posted: false } : current));
     try {
-      await updateFindingApproval(id, approved);
+      await updateFindingStatus(id, status);
       setApiStatus("connected");
+      addToast({ id: `finding-${status}-${Date.now()}`, title: status === "approved" ? "Finding approved" : "Finding rejected", message: "Review decision saved", kind: status === "approved" ? "success" : "info" });
     } catch (err) {
       setFindings(previousFindings);
       setSelectedFinding(previousSelected);
@@ -183,8 +185,8 @@ export function useReviewSession() {
   }
 
   async function approveAllSafe() {
-    const safe = findings.filter((finding) => !finding.posted && ["low", "medium"].includes(String(finding.severity ?? "").toLowerCase()));
-    for (const finding of safe) await approveFinding(finding.id, true);
+    const safe = findings.filter((finding) => finding.status !== "posted" && ["low", "medium"].includes(String(finding.severity ?? "").toLowerCase()));
+    for (const finding of safe) await updateStatus(finding.id, "approved");
   }
 
   function selectFinding(finding: Finding) {
@@ -193,18 +195,18 @@ export function useReviewSession() {
   }
 
   async function postApproved() {
-    const queue = findings.filter((finding) => finding.approved && !finding.posted);
+    const queue = findings.filter((finding) => finding.status === "approved" || (finding.approved && finding.status !== "rejected" && !finding.posted));
     if (queue.length === 0) return;
     setPosting(true);
     setError(null);
     try {
       for (const finding of queue) {
-        await updateFindingApproval(finding.id, true);
+        await updateFindingStatus(finding.id, "approved");
         await postReviewComment(input, finding.id);
-        setFindings((current) => current.map((item) => (item.id === finding.id ? { ...item, posted: true } : item)));
+        setFindings((current) => current.map((item) => (item.id === finding.id ? { ...item, status: "posted", approved: true, posted: true } : item)));
       }
       setApiStatus("connected");
-      addToast({ id: `post-${Date.now()}`, title: "Comments posted", message: `${queue.length} approved comment(s) sent to GitHub`, kind: "success" });
+      addToast({ id: `post-${Date.now()}`, title: "Approved comments posted", message: `${queue.length} approved comment(s) sent to GitHub`, kind: "success" });
     } catch (err) {
       setApiStatus("error");
       setError(err instanceof Error ? err.message : "Failed to post approved comments.");
@@ -239,7 +241,7 @@ export function useReviewSession() {
     setSelectedFile,
     handleFetch,
     handleRun,
-    approveFinding,
+    approveFinding: updateStatus,
     approveAllSafe,
     selectFinding,
     postApproved,

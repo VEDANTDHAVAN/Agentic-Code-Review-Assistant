@@ -12,7 +12,7 @@ type FindingsPanelProps = {
   loading: boolean;
   posting: boolean;
   onSelectFinding: (finding: Finding) => void;
-  onApproveFinding: (id: string, approved: boolean) => void;
+  onApproveFinding: (id: string, status: "approved" | "rejected") => void;
   onApproveAllSafe: () => void;
   onPostApproved: () => void;
 };
@@ -21,13 +21,14 @@ const initialFilters: FindingsFilterState = { severity: "all", agent: "all", app
 
 export function FindingsPanel({ findings, selectedFindingId, loading, posting, onSelectFinding, onApproveFinding, onApproveAllSafe, onPostApproved }: FindingsPanelProps) {
   const [filters, setFilters] = useState(initialFilters);
-  const readyToPost = findings.filter((finding) => finding.approved && !finding.posted).length;
+  const statusOf = (finding: Finding) => finding.status ?? (finding.posted ? "posted" : finding.approved ? "approved" : "pending");
+  const readyToPost = findings.filter((finding) => statusOf(finding) === "approved").length;
   const counters = {
     total: findings.length,
     critical: findings.filter((finding) => String(finding.severity).toLowerCase() === "critical").length,
     high: findings.filter((finding) => String(finding.severity).toLowerCase() === "high").length,
-    approved: findings.filter((finding) => finding.approved).length,
-    posted: findings.filter((finding) => finding.posted).length,
+    approved: findings.filter((finding) => statusOf(finding) === "approved").length,
+    posted: findings.filter((finding) => statusOf(finding) === "posted").length,
   };
 
   const filteredFindings = useMemo(() => findings.filter((finding) => {
@@ -35,9 +36,7 @@ export function FindingsPanel({ findings, selectedFindingId, loading, posting, o
     const agentMatch = filters.agent === "all" || finding.agent === filters.agent;
     const approvalMatch =
       filters.approval === "all" ||
-      (filters.approval === "approved" && finding.approved && !finding.posted) ||
-      (filters.approval === "rejected" && !finding.approved && !finding.posted) ||
-      (filters.approval === "posted" && finding.posted);
+      filters.approval === statusOf(finding);
     return severityMatch && agentMatch && approvalMatch;
   }), [findings, filters]);
 

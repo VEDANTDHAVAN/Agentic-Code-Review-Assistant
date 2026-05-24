@@ -228,8 +228,11 @@ class GitHubClient:
             res = await self.client.post(f"/repos/{owner}/{repo}/pulls/{pr_number}/comments", json=payload)
             if res.status_code < 400:
                 return res.json()
-            if res.status_code not in {400, 422}:
-                self._raise_github_error(res)
+
+            # GitHub can reject line comments for stale SHAs, line mapping gaps,
+            # missing diff context, renamed files, or permission nuances. The
+            # product contract is to fall back to a PR-level issue comment for
+            # any line-level failure.
         res = await self.client.post(f"/repos/{owner}/{repo}/issues/{pr_number}/comments", json={"body": body})
         if res.status_code >= 400:
             self._raise_github_error(res)

@@ -16,7 +16,7 @@ from app.agents.performance import PerformanceReviewAgent
 from app.agents.pr_fetcher import PRFetcherAgent
 from app.agents.security import SecurityReviewAgent
 from app.agents.summary import SummaryAgent
-from app.models.schemas import ApprovalRequest, LogEvent, PostCommentRequest, ReviewResultsResponse, ReviewRunRequest
+from app.models.schemas import ApprovalRequest, FindingStatusRequest, LogEvent, PostCommentRequest, ReviewResultsResponse, ReviewRunRequest
 from app.services.auth_service import token_from_request
 from app.services.github_client import GitHubClient
 from app.services.storage import storage
@@ -115,17 +115,28 @@ async def update_approval(finding_id: str, payload: ApprovalRequest):
     return {"ok": True, "finding_id": finding_id, "approved": payload.approved}
 
 
+@router.post("/finding/status")
+async def update_finding_status(payload: FindingStatusRequest):
+    finding = storage.get_finding(payload.finding_id)
+    if not finding:
+        raise HTTPException(status_code=404, detail="Finding not found")
+    if finding.status == "posted":
+        raise HTTPException(status_code=400, detail="Posted findings cannot be changed")
+    storage.update_finding_status(payload.finding_id, payload.status)
+    return {"ok": True, "finding_id": payload.finding_id, "status": payload.status}
+
+
 @router.post("/comment/post")
 async def post_comment(payload: PostCommentRequest, request: Request):
     finding = storage.get_finding(payload.comment_id)
     if not finding:
         raise HTTPException(status_code=404, detail="Finding not found")
-    if not finding.approved:
+    if finding.status != "approved":
         raise HTTPException(status_code=400, detail="Finding must be approved before posting")
     client = GitHubClient(payload.github_token or token_from_request(request))
     try:
         result = await client.post_finding_comment(payload.owner, payload.repo, payload.pr_number, finding)
-        storage.update_finding_flags(finding.id, posted=True)
+        storage.update_finding_status(finding.id, "posted")
         return {"ok": True, "github_response": result}
     finally:
         await client.close()

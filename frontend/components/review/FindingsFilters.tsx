@@ -40,6 +40,7 @@ export function FindingsFilters({ findings, filters, onChange }: FindingsFilters
         Status
         <select className="h-9 w-full rounded-md border border-border bg-panel-strong px-2 text-sm text-foreground outline-none" value={filters.approval} onChange={(event) => onChange({ ...filters, approval: event.target.value })}>
           <option value="all">All</option>
+          <option value="pending">Pending</option>
           <option value="approved">Approved</option>
           <option value="rejected">Rejected</option>
           <option value="posted">Posted</option>
