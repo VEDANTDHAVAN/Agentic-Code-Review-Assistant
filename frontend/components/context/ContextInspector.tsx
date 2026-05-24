@@ -16,7 +16,7 @@ export function ContextInspector({ state }: ContextInspectorProps) {
   return (
     <section className="rounded-lg border border-border bg-panel">
       <div className="border-b border-border p-4">
-        <h2 className="text-sm font-semibold text-white">Context inspector</h2>
+        <h2 className="text-sm font-semibold text-foreground">Context inspector</h2>
         <p className="mt-1 text-xs text-slate-500">Current client-side execution state.</p>
       </div>
       <pre className="max-h-[260px] overflow-auto p-4 text-xs leading-5 text-slate-300 scrollbar-thin">

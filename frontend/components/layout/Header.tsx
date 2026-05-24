@@ -22,7 +22,7 @@ const statusCopy: Record<ReviewStatus, string> = {
 
 export function Header({ status, apiStatus, jobId }: HeaderProps) {
   const StatusIcon = status === "failed" ? CircleX : status === "completed" ? CircleCheck : status === "running" ? Activity : CircleDashed;
-  const { resolvedTheme, toggleTheme } = useTheme();
+  const { toggleTheme } = useTheme();
 
   return (
     <header className="flex flex-col gap-3 border-b border-border bg-panel/90 px-4 py-4 backdrop-blur md:flex-row md:items-center md:justify-between md:px-6">
@@ -41,7 +41,8 @@ export function Header({ status, apiStatus, jobId }: HeaderProps) {
           API {apiStatus}
         </span>
         <button aria-label="Toggle theme" className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-panel-strong text-foreground hover:border-primary/60" onClick={toggleTheme}>
-          {resolvedTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          <Sun className="hidden h-4 w-4 dark:block" />
+          <Moon className="h-4 w-4 dark:hidden" />
         </button>
       </div>
     </header>

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useLayoutEffect, useMemo, useState } from "react";
 
 type Theme = "light" | "dark" | "system";
 
@@ -19,6 +19,12 @@ function systemTheme(): "light" | "dark" {
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
+function applyTheme(next: "light" | "dark") {
+  document.documentElement.classList.toggle("dark", next === "dark");
+  document.documentElement.classList.toggle("light", next === "light");
+  document.documentElement.dataset.theme = next;
+}
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
     if (typeof window === "undefined") return "system";
@@ -28,14 +34,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [systemVersion, setSystemVersion] = useState(0);
   const resolvedTheme = theme === "system" ? systemTheme() : theme;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const next = theme === "system" ? systemTheme() : theme;
-    document.documentElement.classList.toggle("dark", next === "dark");
-    document.documentElement.classList.toggle("light", next === "light");
+    applyTheme(next);
     window.localStorage.setItem(THEME_KEY, theme);
   }, [theme, systemVersion]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const query = window.matchMedia("(prefers-color-scheme: dark)");
     const listener = () => {
       if (theme === "system") setSystemVersion((current) => current + 1);
@@ -48,7 +53,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     theme,
     resolvedTheme,
     setTheme: setThemeState,
-    toggleTheme: () => setThemeState((current) => (current === "dark" ? "light" : "dark")),
+    toggleTheme: () => setThemeState(() => (resolvedTheme === "dark" ? "light" : "dark")),
   }), [theme, resolvedTheme]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

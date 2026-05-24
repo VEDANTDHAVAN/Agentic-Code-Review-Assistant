@@ -49,7 +49,7 @@ export function GitHubForm({ initialInput, loading, onFetch, onRun }: GitHubForm
     <section className="rounded-lg border border-border bg-panel p-4 shadow-2xl shadow-black/20">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-white">GitHub pull request</h2>
+          <h2 className="text-sm font-semibold text-foreground">GitHub pull request</h2>
           <p className="mt-1 text-xs text-slate-400">Token is kept in memory only for this session.</p>
         </div>
         <Github className="h-5 w-5 text-slate-500" />
@@ -59,7 +59,7 @@ export function GitHubForm({ initialInput, loading, onFetch, onRun }: GitHubForm
         <label className="space-y-1.5 text-xs font-medium text-slate-400">
           GitHub token
           <input
-            className="h-10 w-full rounded-md border border-border bg-[#090f1b] px-3 text-sm text-white outline-none transition focus:border-cyan-400/70"
+            className="h-10 w-full rounded-md border border-border bg-panel-strong px-3 text-sm text-foreground outline-none transition focus:border-primary/70"
             placeholder="ghp_... or leave empty"
             type="password"
             value={input.github_token ?? ""}
@@ -70,7 +70,7 @@ export function GitHubForm({ initialInput, loading, onFetch, onRun }: GitHubForm
         <label className="space-y-1.5 text-xs font-medium text-slate-400">
           Owner
           <input
-            className="h-10 w-full rounded-md border border-border bg-[#090f1b] px-3 text-sm text-white outline-none transition focus:border-cyan-400/70"
+            className="h-10 w-full rounded-md border border-border bg-panel-strong px-3 text-sm text-foreground outline-none transition focus:border-primary/70"
             placeholder="openai"
             value={input.owner}
             onChange={(event) => setInput((current) => ({ ...current, owner: event.target.value }))}
@@ -82,7 +82,7 @@ export function GitHubForm({ initialInput, loading, onFetch, onRun }: GitHubForm
           <div className="relative">
             <GitBranch className="absolute left-3 top-2.5 h-4 w-4 text-slate-600" />
             <input
-              className="h-10 w-full rounded-md border border-border bg-[#090f1b] pl-9 pr-3 text-sm text-white outline-none transition focus:border-cyan-400/70"
+              className="h-10 w-full rounded-md border border-border bg-panel-strong pl-9 pr-3 text-sm text-foreground outline-none transition focus:border-primary/70"
               placeholder="repo"
               value={input.repo}
               onChange={(event) => setInput((current) => ({ ...current, repo: event.target.value }))}
@@ -93,7 +93,7 @@ export function GitHubForm({ initialInput, loading, onFetch, onRun }: GitHubForm
         <label className="space-y-1.5 text-xs font-medium text-slate-400">
           PR
           <input
-            className="h-10 w-full rounded-md border border-border bg-[#090f1b] px-3 text-sm text-white outline-none transition focus:border-cyan-400/70"
+            className="h-10 w-full rounded-md border border-border bg-panel-strong px-3 text-sm text-foreground outline-none transition focus:border-primary/70"
             min={1}
             type="number"
             value={input.pr_number}
@@ -101,12 +101,12 @@ export function GitHubForm({ initialInput, loading, onFetch, onRun }: GitHubForm
           />
         </label>
 
-        <button className="mt-auto inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-white/5 px-4 text-sm font-semibold text-slate-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50" disabled={loading} type="submit">
+        <button className="mt-auto inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-panel-strong px-4 text-sm font-semibold text-foreground transition hover:border-primary/60 disabled:cursor-not-allowed disabled:opacity-50" disabled={loading} type="submit">
           <Search className="h-4 w-4" />
           Fetch PR
         </button>
 
-        <button className="mt-auto inline-flex h-10 items-center justify-center gap-2 rounded-md bg-cyan-400 px-4 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-50" disabled={loading} type="button" onClick={handleRun}>
+        <button className="mt-auto inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50" disabled={loading} type="button" onClick={handleRun}>
           <Play className="h-4 w-4" />
           Run Review
         </button>
