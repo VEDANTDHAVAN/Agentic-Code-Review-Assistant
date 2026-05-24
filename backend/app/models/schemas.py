@@ -31,6 +31,9 @@ class PRMetadata(BaseModel):
     html_url: str
     base_branch: str
     head_branch: str
+    additions: int = 0
+    deletions: int = 0
+    changed_files: int = 0
 
 
 class ChangedFile(BaseModel):
@@ -38,12 +41,17 @@ class ChangedFile(BaseModel):
     status: str
     additions: int = 0
     deletions: int = 0
+    changes: int = 0
     patch: str = ""
+    raw_url: str | None = None
+    blob_url: str | None = None
 
 
 class PRFetchResponse(BaseModel):
+    metadata: PRMetadata
     pr_metadata: PRMetadata
     files: list[ChangedFile]
+    commits: list[dict[str, Any]] = Field(default_factory=list)
     diffs: dict[str, str]
     from_mock: bool = False
 

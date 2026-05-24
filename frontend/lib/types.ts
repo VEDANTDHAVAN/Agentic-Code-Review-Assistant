@@ -14,6 +14,9 @@ export type PRMetadata = {
   html_url?: string;
   base_branch?: string;
   head_branch?: string;
+  additions?: number;
+  deletions?: number;
+  changed_files?: number;
   [key: string]: unknown;
 };
 
@@ -22,7 +25,10 @@ export type ChangedFile = {
   status?: string;
   additions?: number;
   deletions?: number;
+  changes?: number;
   patch?: string;
+  raw_url?: string | null;
+  blob_url?: string | null;
   [key: string]: unknown;
 };
 

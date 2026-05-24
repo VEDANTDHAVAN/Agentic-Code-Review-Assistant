@@ -1,35 +1,143 @@
 # Agentic Code Review Assistant
 
-Functional MVP for reviewing GitHub pull request diffs with modular AI-style agents. It fetches PR metadata and changed files, streams agent logs over Server-Sent Events, detects security, bug, performance, and code-smell findings, lets a human approve or reject each suggestion, then posts approved comments back to GitHub.
+Agentic Code Review Assistant is an MVP/prototype for AI-assisted GitHub pull request review. It fetches a real GitHub PR with a user-provided Personal Access Token, analyzes changed patches through a modular review-agent pipeline, streams live execution logs, and lets a human approve comments before posting them back to GitHub.
 
-The app works without a GitHub token by falling back to deterministic demo PR data.
+This project is built for hackathon, portfolio, and recruiter review: it demonstrates full-stack product thinking, GitHub API integration, streaming UX, human-in-the-loop AI review, and a practical path toward production-grade code review automation.
 
-## Stack
+## Features
 
-- Backend: FastAPI, Python, SQLite, SSE
-- Frontend: Next.js, TypeScript, Tailwind CSS, Monaco Editor, React Flow, lucide icons
-- Integrations: GitHub REST API with Personal Access Token auth
-- AI: provider abstraction with deterministic fallback when no API keys exist
+- Real GitHub PR fetching with Personal Access Token authentication
+- Pull request metadata, changed files, patches, and commits from GitHub REST APIs
+- Modular backend agent pipeline:
+  - `PRFetcherAgent`
+  - `ContextBuilderAgent`
+  - `SecurityReviewAgent`
+  - `BugDetectionAgent`
+  - `PerformanceReviewAgent`
+  - `CodeSmellAgent`
+  - `SummaryAgent`
+- Rule-based MVP findings for security risks, bugs, performance issues, and code smells
+- Server-Sent Events for live agent logs
+- Dark AI-native Next.js dashboard
+- Monaco-powered diff viewer
+- React Flow pipeline visualization with active/completed/error agent states
+- Human approval/rejection before posting
+- GitHub line-level PR review comments with fallback to PR-level issue comments
+- SQLite storage for jobs, findings, and logs
+- Optional demo mode when no token is provided or `DEMO_MODE=true`
 
-## Project Structure
+## Architecture Overview
+
+```mermaid
+flowchart LR
+  User["Reviewer"] --> UI["Next.js Dashboard"]
+  UI --> Fetch["POST /github/pr/fetch"]
+  UI --> Run["POST /review/run"]
+  UI --> Stream["GET /review/stream/{job_id}"]
+  UI --> Post["POST /review/comment/post"]
+  Fetch --> GitHub["GitHub REST API"]
+  Run --> Pipeline["Agent Pipeline"]
+  Pipeline --> GitHub
+  Pipeline --> DB["SQLite"]
+  Stream --> DB
+  Post --> DB
+  Post --> GitHub
+```
+
+The backend never persists the GitHub token. The token is accepted per request from the frontend and used only for the current GitHub API operation.
+
+## Tech Stack
+
+Backend:
+- FastAPI
+- Python
+- httpx
+- SQLite
+- Server-Sent Events
+- GitHub REST API
+
+Frontend:
+- Next.js App Router
+- TypeScript
+- Tailwind CSS
+- Monaco Editor
+- `@xyflow/react`
+- pnpm
+
+AI:
+- Provider abstraction for future OpenAI/Gemini/Claude enhancement
+- Deterministic rule-based review logic for this MVP
+
+## Folder Structure
 
 ```text
-backend/
-  app/
-    main.py
-    api/
-    agents/
-    services/
-    models/
-    core/
-  requirements.txt
-frontend/
-  app/
-  components/
-  lib/
-  package.json
-.env.example
+.
+├── backend/
+│   ├── app/
+│   │   ├── agents/
+│   │   ├── api/
+│   │   ├── core/
+│   │   ├── models/
+│   │   ├── services/
+│   │   └── main.py
+│   └── requirements.txt
+├── frontend/
+│   ├── app/
+│   ├── components/
+│   ├── lib/
+│   ├── package.json
+│   └── pnpm-lock.yaml
+├── .env.example
+└── README.md
 ```
+
+## Prerequisites
+
+- Python 3.11+
+- Node.js 20+
+- pnpm
+- A GitHub Personal Access Token
+- A GitHub repository with an open pull request
+
+## GitHub Personal Access Token Setup
+
+For a fine-grained token:
+
+1. Go to GitHub `Settings` -> `Developer settings` -> `Personal access tokens` -> `Fine-grained tokens`.
+2. Generate a token for the target repository or organization.
+3. Grant repository permissions:
+   - Pull requests: read/write
+   - Contents: read
+   - Metadata: read
+   - Issues: read/write, needed for PR-level fallback comments
+4. Copy the token and paste it into the frontend form when running the app.
+
+For a classic token:
+
+- Public repos: `public_repo`
+- Private repos: `repo`
+
+Do not put the token in `.env`; the MVP intentionally accepts it from the UI per request.
+
+## Environment Variables
+
+Copy `.env.example` to `.env` at the project root if needed.
+
+```text
+DATABASE_PATH=/data/reviews.db
+CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+BACKEND_PORT=8000
+FRONTEND_URL=http://localhost:3000
+DEMO_MODE=false
+
+OPENAI_API_KEY=
+GEMINI_API_KEY=
+ANTHROPIC_API_KEY=
+
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+```
+
+`DEMO_MODE=false` makes token-backed requests use the real GitHub API. If `DEMO_MODE=true`, the backend uses built-in demo PR data. If no GitHub token is supplied, the backend also falls back to demo data.
 
 ## Backend Setup
 
@@ -38,6 +146,11 @@ cd backend
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
+```
+
+Run the backend:
+
+```bash
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
@@ -51,83 +164,202 @@ curl http://localhost:8000/health
 
 ```bash
 cd frontend
-npm install
-npm run dev
+pnpm install
 ```
 
-Open `http://localhost:3000`.
-
-## Environment
-
-Copy `.env.example` to `.env` at the repo root if you want to customize settings.
-
-For GitHub posting, use a PAT with access to the target repository. For classic tokens, `repo` scope is sufficient for private repos. Public-only usage can use narrower public repo permissions.
-
-AI provider keys are optional:
+Create `frontend/.env.local`:
 
 ```text
-OPENAI_API_KEY=
-GEMINI_API_KEY=
-ANTHROPIC_API_KEY=
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 ```
 
-When no provider key is present, the summary and review flow remain deterministic for demos.
+Run the frontend:
 
-## Demo Flow
+```bash
+pnpm dev
+```
 
-1. Start the backend on port `8000`.
-2. Start the frontend on port `3000`.
-3. Leave GitHub PAT empty.
-4. Keep the default `demo / agentic-demo / PR 1` values.
-5. Click `Fetch` to load mock PR metadata and a diff.
-6. Click `Run Review`.
-7. Watch live agent events stream in the timeline and active nodes highlight in the pipeline graph.
-8. Approve or reject suggested comments.
-9. Click `Post` on an approved finding. Without a token, posting is simulated and the finding is marked posted.
+Open [http://localhost:3000](http://localhost:3000).
 
-## API Summary
+## Full Usage Flow
 
-- `POST /github/pr/fetch`: fetch PR metadata, changed files, and diffs. Falls back to mock data if no token or GitHub fetch fails.
-- `POST /review/run`: starts the review pipeline and returns `job_id`.
-- `GET /review/stream/{job_id}`: streams SSE log events.
-- `GET /review/results/{job_id}`: returns job status, findings, summary, and logs.
-- `PATCH /review/findings/{finding_id}/approval`: approve or reject a finding.
-- `POST /review/comment/post`: posts one approved comment to GitHub or simulates posting without a token.
+1. Start the backend on `http://localhost:8000`.
+2. Start the frontend on `http://localhost:3000`.
+3. Create a GitHub Personal Access Token with PR read/write and issues write permissions.
+4. In the dashboard, enter:
+   - GitHub token
+   - Repository owner
+   - Repository name
+   - Pull request number
+5. Click `Fetch PR`.
+6. Inspect real PR metadata, changed files, and patches.
+7. Click `Run Review`.
+8. Watch the live agent timeline and React Flow pipeline graph.
+9. Inspect generated findings.
+10. Approve or reject each suggested comment locally.
+11. Click `Post Approved` to publish approved comments to GitHub.
+12. Confirm posted status in the UI and on the GitHub PR.
 
-## Implemented Agents
+## API Documentation
 
-- `PRFetcherAgent`
-- `ContextBuilderAgent`
-- `SecurityReviewAgent`
-- `BugDetectionAgent`
-- `PerformanceReviewAgent`
-- `CodeSmellAgent`
-- `SummaryAgent`
+### `POST /github/pr/fetch`
 
-Each agent accepts the shared context dict, emits logs, and returns structured findings where applicable.
+Fetches real PR metadata, changed files, diffs, and commits from GitHub.
 
-## MVP Detection Rules
+Request:
 
-Security:
-- Hardcoded secrets
-- `eval` usage
-- SQL string concatenation
-- Unsafe shell execution
+```json
+{
+  "github_token": "ghp_or_fine_grained_token",
+  "owner": "octocat",
+  "repo": "hello-world",
+  "pr_number": 1
+}
+```
 
-Bugs:
-- Missing key/null guard risks
-- Broad exception handling
-- Swallowed errors
+Response:
 
-Performance:
-- Nested loops
-- API or database calls inside loops
+```json
+{
+  "metadata": {
+    "title": "Improve auth validation",
+    "author": "developer",
+    "state": "open",
+    "base_branch": "main",
+    "head_branch": "feature/auth-validation",
+    "additions": 120,
+    "deletions": 32,
+    "changed_files": 4,
+    "html_url": "https://github.com/octocat/hello-world/pull/1"
+  },
+  "files": [
+    {
+      "filename": "src/auth.py",
+      "status": "modified",
+      "additions": 20,
+      "deletions": 5,
+      "changes": 25,
+      "patch": "@@ ...",
+      "raw_url": "https://github.com/...",
+      "blob_url": "https://github.com/..."
+    }
+  ],
+  "commits": [],
+  "diffs": {
+    "src/auth.py": "@@ ..."
+  }
+}
+```
 
-Code smells:
-- Large function risk
-- Duplicate logic
-- Unclear naming
+The response also includes `pr_metadata` as a compatibility alias for `metadata`.
 
-## Notes
+### `POST /review/run`
 
-Line-level GitHub comments use the PR review comments endpoint when a finding has a file path and line number. If line posting fails or a finding is PR-level, the backend posts a general issue comment on the PR.
+Starts a review job against the real PR data.
+
+Response:
+
+```json
+{
+  "job_id": "uuid"
+}
+```
+
+### `GET /review/stream/{job_id}`
+
+Streams Server-Sent Events:
+
+```json
+{
+  "type": "finding",
+  "message": "Finding detected: Unsafe shell execution",
+  "agent": "SecurityReviewAgent",
+  "metadata": {
+    "id": "finding-id"
+  }
+}
+```
+
+### `GET /review/results/{job_id}`
+
+Returns job metadata, findings, summary, and logs.
+
+### `PATCH /review/findings/{finding_id}/approval`
+
+Approves or rejects a finding in storage.
+
+```json
+{
+  "approved": true
+}
+```
+
+### `POST /review/comment/post`
+
+Posts an approved finding to GitHub.
+
+```json
+{
+  "github_token": "ghp_or_fine_grained_token",
+  "owner": "octocat",
+  "repo": "hello-world",
+  "pr_number": 1,
+  "comment_id": "finding-id"
+}
+```
+
+If the finding has a valid `file_path` and `line_number`, the backend first attempts a line-level PR review comment. If that fails, or if no line number exists, it posts a PR-level issue comment.
+
+## Troubleshooting
+
+Invalid token:
+- Check that the token was copied correctly.
+- Fine-grained tokens must be granted access to the repository.
+
+Repository or PR not found:
+- Verify owner, repo, and PR number.
+- Private repos require token access.
+
+Rate limit exceeded:
+- Wait for GitHub’s rate limit reset.
+- Use an authenticated token rather than anonymous/demo mode.
+
+No patch content:
+- GitHub may omit patches for binary files, very large files, renamed-only files, or generated files.
+- The app will still show the file, but agents can only analyze available patch text.
+
+Posting failed:
+- Ensure the token has pull request write permission.
+- Ensure issues write permission is available for PR-level fallback comments.
+- Some line-level comments fail when the line is outside GitHub’s diff context; the backend falls back to a PR-level comment.
+
+CORS error:
+- Confirm `CORS_ORIGINS` includes your frontend URL.
+- Default: `http://localhost:3000,http://127.0.0.1:3000`
+
+## Known Limitations
+
+- This is an MVP/prototype, not a production review bot.
+- Review rules are deterministic heuristics with optional future AI enhancement.
+- GitHub pagination currently fetches up to 100 files and 100 commits.
+- No GitHub App auth yet.
+- No multi-user auth or encrypted secret storage.
+- SQLite is used for local MVP persistence.
+- Line mapping is based on added lines in GitHub patch hunks and may fall back to PR-level comments when exact placement is not possible.
+
+## Future Improvements
+
+- GitHub App authentication and installation flow
+- Multi-page GitHub pagination for very large PRs
+- LLM-powered semantic review with model/provider selection
+- Repository context indexing
+- Inline prompt tuning and review policy configuration
+- Team approval workflows
+- Persistent review history per user
+- Webhook-triggered automatic reviews
+- SARIF or code scanning integration
+- Richer test coverage and CI deployment
+
+## Product Thinking
+
+The product is intentionally human-in-the-loop. The assistant accelerates review by finding risky patterns and drafting actionable comments, but the developer remains in control of what gets posted. That keeps the MVP practical for real teams: useful automation without surprise comments appearing on production pull requests.
