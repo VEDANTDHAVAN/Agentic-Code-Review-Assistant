@@ -2,6 +2,7 @@ export type ReviewStatus = "idle" | "fetching" | "ready" | "running" | "complete
 
 export type GitHubPRInput = {
   github_token?: string;
+  user_id?: string;
   owner: string;
   repo: string;
   pr_number: number;
@@ -151,4 +152,14 @@ export type GitHubPermissionStatus = {
   has_repo_scope: boolean;
   can_post_comments: boolean;
   warnings: string[];
+};
+
+export type AIProviderName = "openai" | "openrouter";
+
+export type UserAIKeyPublic = {
+  provider: AIProviderName;
+  masked_key: string;
+  default_model: string;
+  connected: boolean;
+  updated_at: string;
 };

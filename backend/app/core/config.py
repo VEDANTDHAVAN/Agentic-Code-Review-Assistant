@@ -1,6 +1,12 @@
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+APP_DIR = Path(__file__).resolve().parents[1]
+BACKEND_DIR = APP_DIR.parent
+PROJECT_ROOT = BACKEND_DIR.parent
 
 
 class Settings(BaseSettings):
@@ -10,6 +16,13 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:3000"
     demo_mode: bool = False
     github_auth_mode: str = "clerk_oauth"
+    app_encryption_key: str | None = None
+    default_ai_provider: str = "openai"
+    default_openai_model: str = "gpt-4o-mini"
+    default_openrouter_model: str = "openai/gpt-4o-mini"
+    openrouter_api_key: str | None = None
+    openrouter_app_url: str = "http://localhost:3000"
+    openrouter_app_name: str = "PRism AI"
     github_oauth_client_id: str | None = None
     github_oauth_client_secret: str | None = None
     github_oauth_callback_url: str = "http://localhost:8000/auth/github/callback"
@@ -20,7 +33,14 @@ class Settings(BaseSettings):
     anthropic_api_key: str | None = None
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=(
+            PROJECT_ROOT / ".env",
+            BACKEND_DIR / ".env",
+            Path.cwd() / ".env",
+        ),
+        extra="ignore",
+    )
 
 
 @lru_cache

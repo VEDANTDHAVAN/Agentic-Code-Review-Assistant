@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bot, GitPullRequest, LayoutDashboard, FolderGit2 } from "lucide-react";
+import { Bot, GitPullRequest, LayoutDashboard, FolderGit2, Settings } from "lucide-react";
 import { RecentReviews } from "@/components/history/RecentReviews";
 
 export function Sidebar() {
@@ -34,6 +34,10 @@ export function Sidebar() {
         <Link className={itemClass(pathname === "/pull-requests" || pathname.startsWith("/reviews"))} href="/pull-requests">
           <GitPullRequest className="h-4 w-4" />
           Review history
+        </Link>
+        <Link className={itemClass(pathname === "/settings")} href="/settings">
+          <Settings className="h-4 w-4" />
+          Settings
         </Link>
       </nav>
       <RecentReviews />

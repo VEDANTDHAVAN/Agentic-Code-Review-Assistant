@@ -55,6 +55,13 @@ export function Dashboard({ initialReviewInput = initialInput }: { initialReview
             <p className="mt-2 text-lg font-semibold text-warning">{pendingComments}</p>
           </div>
         </section>
+        <section className={`rounded-lg border p-4 ${session.aiRuntime?.source === "mock" || !session.aiRuntime ? "border-amber-500/30 bg-amber-500/10" : "border-primary/30 bg-primary/10"}`}>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted">AI Provider</p>
+          <p className="mt-1 text-sm font-semibold text-foreground">
+            {session.aiRuntime ? `${session.aiRuntime.provider} / ${session.aiRuntime.model}` : "Not selected yet"}
+          </p>
+          {session.aiRuntime?.source === "mock" || !session.aiRuntime ? <p className="mt-1 text-xs text-muted">Mock mode is used until a BYOK or server AI key is configured.</p> : null}
+        </section>
         <GitHubPermissionStatus />
         <GitHubForm initialInput={initialReviewInput} loading={session.loading || session.posting} onFetch={session.handleFetch} onRun={session.handleRun} />
 

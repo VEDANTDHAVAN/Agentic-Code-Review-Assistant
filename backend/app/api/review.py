@@ -27,6 +27,7 @@ router = APIRouter(prefix="/review", tags=["review"])
 async def run_pipeline(job_id: str, payload: ReviewRunRequest) -> None:
     context: dict[str, Any] = {
         "github_token": payload.github_token,
+        "user_id": payload.user_id,
         "owner": payload.owner,
         "repo": payload.repo,
         "pr_number": payload.pr_number,
