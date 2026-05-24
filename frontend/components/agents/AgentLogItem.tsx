@@ -28,10 +28,11 @@ export function AgentLogItem({ event }: AgentLogItemProps) {
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-semibold text-slate-100">{event.agent ?? "Pipeline"}</span>
-          <span className="rounded bg-white/5 px-1.5 py-0.5 text-[11px] uppercase tracking-wide text-slate-500">{event.type ?? "event"}</span>
-        </div>
-        <p className="mt-1 text-sm leading-5 text-slate-400">{event.message ?? "Event received"}</p>
+              <span className="text-sm font-semibold text-foreground">{event.agent ?? "Pipeline"}</span>
+              <span className="rounded bg-panel px-1.5 py-0.5 text-[11px] uppercase tracking-wide text-muted">{event.type ?? "event"}</span>
+              {event.created_at ? <span className="text-[11px] text-muted">{new Date(event.created_at).toLocaleTimeString()}</span> : null}
+            </div>
+            <p className="mt-1 text-sm leading-5 text-muted">{event.message ?? "Event received"}</p>
       </div>
     </div>
   );

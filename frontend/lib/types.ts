@@ -84,3 +84,23 @@ export type ApiError = {
   message: string;
   status?: number;
 };
+
+export type RecentReview = {
+  job_id: string;
+  owner: string;
+  repo: string;
+  pr_number: number;
+  title: string;
+  completed_at: string;
+  findings_count: number;
+  status: string;
+  results?: ReviewResults;
+  pr?: PRFetchResponse | null;
+};
+
+export type AgentToast = {
+  id: string;
+  title: string;
+  message: string;
+  kind: "info" | "success" | "warning" | "error";
+};
