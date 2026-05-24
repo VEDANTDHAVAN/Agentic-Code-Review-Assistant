@@ -1,5 +1,5 @@
 import { API_BASE_URL } from "./constants";
-import type { AuthState, GitHubPermissionStatus, GitHubPRInput, PRFetchResponse, PullRequestSummary, RepositorySummary, ReviewResults } from "./types";
+import type { AIProviderName, AuthState, GitHubPermissionStatus, GitHubPRInput, PRFetchResponse, PullRequestSummary, RepositorySummary, ReviewResults, UserAIKeyPublic } from "./types";
 
 async function parseResponse<T>(response: Response): Promise<T> {
   const text = await response.text();
@@ -136,4 +136,39 @@ export async function checkGitHubPermissions(): Promise<GitHubPermissionStatus> 
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
   return parseResponse<GitHubPermissionStatus>(response);
+}
+
+function userHeaders(userId: string) {
+  return { "Content-Type": "application/json", "X-Prism-User-Id": userId };
+}
+
+export async function listAIKeys(userId: string): Promise<UserAIKeyPublic[]> {
+  const response = await fetch(`${API_BASE_URL}/user/ai-keys`, { headers: { "X-Prism-User-Id": userId } });
+  return parseResponse<UserAIKeyPublic[]>(response);
+}
+
+export async function saveAIKey(userId: string, payload: { provider: AIProviderName; api_key: string; default_model: string }) {
+  const response = await fetch(`${API_BASE_URL}/user/ai-keys`, {
+    method: "POST",
+    headers: userHeaders(userId),
+    body: JSON.stringify(payload),
+  });
+  return parseResponse(response);
+}
+
+export async function testAIKey(payload: { provider: AIProviderName; api_key: string; default_model: string }): Promise<{ valid: boolean; message: string }> {
+  const response = await fetch(`${API_BASE_URL}/user/ai-keys/test`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return parseResponse(response);
+}
+
+export async function deleteAIKey(userId: string, provider: AIProviderName) {
+  const response = await fetch(`${API_BASE_URL}/user/ai-keys/${provider}`, {
+    method: "DELETE",
+    headers: { "X-Prism-User-Id": userId },
+  });
+  return parseResponse(response);
 }

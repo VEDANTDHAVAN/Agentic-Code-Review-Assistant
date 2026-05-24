@@ -11,9 +11,24 @@ from app.core.config import get_settings
 from app.models.schemas import Finding, LogEvent, ReviewJob
 
 
+BACKEND_DIR = Path(__file__).resolve().parents[2]
+
+
+def resolve_database_path(raw_path: str) -> Path:
+    path = Path(raw_path)
+    clean_parts = [part for part in path.parts if part not in {path.anchor, path.drive, "\\", "/"}]
+    if path.is_absolute() or path.anchor:
+        if clean_parts and clean_parts[0] == "backend":
+            return BACKEND_DIR.joinpath(*clean_parts[1:])
+        if clean_parts and clean_parts[0] == "data":
+            return BACKEND_DIR.joinpath(*clean_parts)
+        return path
+    return BACKEND_DIR / path
+
+
 class Storage:
     def __init__(self) -> None:
-        self.db_path = Path(get_settings().database_path)
+        self.db_path = resolve_database_path(get_settings().database_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.init_db()
 
@@ -76,6 +91,17 @@ class Storage:
                   encrypted_token TEXT NOT NULL,
                   created_at TEXT NOT NULL,
                   updated_at TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS user_ai_keys (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  user_id TEXT NOT NULL,
+                  provider TEXT NOT NULL,
+                  encrypted_key TEXT NOT NULL,
+                  masked_key TEXT NOT NULL,
+                  default_model TEXT NOT NULL,
+                  created_at TEXT NOT NULL,
+                  updated_at TEXT NOT NULL,
+                  UNIQUE(user_id, provider)
                 );
                 """
             )
@@ -276,6 +302,50 @@ class Storage:
             return
         with self.connect() as conn:
             conn.execute("DELETE FROM oauth_sessions WHERE session_id = ?", (session_id,))
+
+    def upsert_user_ai_key(self, user_id: str, provider: str, encrypted_key: str, masked_key: str, default_model: str) -> None:
+        now = datetime.now().isoformat()
+        with self.connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO user_ai_keys (user_id, provider, encrypted_key, masked_key, default_model, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(user_id, provider) DO UPDATE SET
+                  encrypted_key = excluded.encrypted_key,
+                  masked_key = excluded.masked_key,
+                  default_model = excluded.default_model,
+                  updated_at = excluded.updated_at
+                """,
+                (user_id, provider, encrypted_key, masked_key, default_model, now, now),
+            )
+
+    def list_user_ai_keys(self, user_id: str) -> list[dict[str, Any]]:
+        with self.connect() as conn:
+            rows = conn.execute(
+                "SELECT provider, masked_key, default_model, updated_at FROM user_ai_keys WHERE user_id = ? ORDER BY provider",
+                (user_id,),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def get_user_ai_key(self, user_id: str, provider: str) -> dict[str, Any] | None:
+        with self.connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM user_ai_keys WHERE user_id = ? AND provider = ?",
+                (user_id, provider),
+            ).fetchone()
+        return dict(row) if row else None
+
+    def get_any_user_ai_key(self, user_id: str) -> dict[str, Any] | None:
+        with self.connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM user_ai_keys WHERE user_id = ? ORDER BY updated_at DESC LIMIT 1",
+                (user_id,),
+            ).fetchone()
+        return dict(row) if row else None
+
+    def delete_user_ai_key(self, user_id: str, provider: str) -> None:
+        with self.connect() as conn:
+            conn.execute("DELETE FROM user_ai_keys WHERE user_id = ? AND provider = ?", (user_id, provider))
 
 
 storage = Storage()

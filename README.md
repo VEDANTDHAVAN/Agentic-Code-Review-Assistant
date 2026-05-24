@@ -217,6 +217,14 @@ GITHUB_OAUTH_CLIENT_SECRET=
 GITHUB_OAUTH_CALLBACK_URL=http://localhost:8000/auth/github/callback
 SESSION_SECRET_KEY=change-me-use-a-long-random-string
 SESSION_COOKIE_NAME=acra_session
+APP_ENCRYPTION_KEY=change-me-use-a-long-random-string
+DEFAULT_AI_PROVIDER=openai
+DEFAULT_OPENAI_MODEL=gpt-4o-mini
+DEFAULT_OPENROUTER_MODEL=openai/gpt-4o-mini
+OPENAI_API_KEY=
+OPENROUTER_API_KEY=
+OPENROUTER_APP_URL=http://localhost:3000
+OPENROUTER_APP_NAME=PRism AI
 
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
@@ -266,6 +274,109 @@ Workflow:
 11. Watch SSE logs, agent graph, toasts, and activity pill.
 12. Approve or reject findings.
 13. Post approved comments to GitHub.
+
+## BYOK AI Provider Support
+
+PRism AI supports bring-your-own-key AI configuration for:
+
+- OpenAI
+- OpenRouter
+
+Users can open `/settings`, choose a provider, enter an API key, test the key, save it, and set a default model. Raw keys are never returned by the API and are not stored in frontend localStorage.
+
+### Encryption
+
+Set:
+
+```text
+APP_ENCRYPTION_KEY=change-me-use-a-long-random-string
+```
+
+The backend encrypts user AI keys before storing them in SQLite. If `APP_ENCRYPTION_KEY` is missing, saving keys fails with a clear error. The app does not silently store plaintext.
+
+### OpenAI Setup
+
+Supported model presets:
+
+- `gpt-4o-mini`
+- `gpt-4o`
+- `gpt-4.1-mini`
+- `gpt-4.1`
+
+Server fallback:
+
+```text
+OPENAI_API_KEY=
+DEFAULT_AI_PROVIDER=openai
+DEFAULT_OPENAI_MODEL=gpt-4o-mini
+```
+
+### OpenRouter Setup
+
+OpenRouter uses the OpenAI-compatible endpoint:
+
+```text
+https://openrouter.ai/api/v1/chat/completions
+```
+
+Supported presets:
+
+- `openai/gpt-4o-mini`
+- `anthropic/claude-3.5-sonnet`
+- `google/gemini-flash-1.5`
+- `deepseek/deepseek-chat`
+- `meta-llama/llama-3.1-70b-instruct`
+
+Server fallback:
+
+```text
+OPENROUTER_API_KEY=
+DEFAULT_AI_PROVIDER=openrouter
+DEFAULT_OPENROUTER_MODEL=openai/gpt-4o-mini
+OPENROUTER_APP_URL=http://localhost:3000
+OPENROUTER_APP_NAME=PRism AI
+```
+
+### Provider Fallback Order
+
+Review-time AI selection uses:
+
+1. User BYOK provider key and default model.
+2. Server provider config from environment variables.
+3. Deterministic mock fallback.
+
+Logs only expose safe metadata:
+
+- provider name
+- model name
+- source: `user`, `server`, or `mock`
+
+API keys are never logged.
+
+### BYOK Troubleshooting
+
+Invalid key:
+
+- Use `/settings` -> `Test key`.
+- Verify the provider matches the key.
+
+Model unavailable:
+
+- Try a preset model.
+- Confirm the model is enabled for your OpenAI/OpenRouter account.
+
+Rate limits:
+
+- Provider APIs may return rate-limit errors.
+- Use a different model or provider key.
+
+Missing encryption key:
+
+- Set `APP_ENCRYPTION_KEY` before saving keys.
+
+Malformed provider response:
+
+- Check provider status and selected model compatibility.
 
 ## API Summary
 

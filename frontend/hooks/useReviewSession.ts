@@ -5,6 +5,7 @@ import { createReviewStream, fetchPR, getReviewResults, postReviewComment, runRe
 import { AGENT_PIPELINE, SEVERITY_ORDER } from "@/lib/constants";
 import type { AgentToast, ChangedFile, Finding, GitHubPRInput, PRFetchResponse, ReviewLogEvent, ReviewStatus } from "@/lib/types";
 import { useRecentReviews } from "./useRecentReviews";
+import { useAuth } from "./useAuth";
 
 const initialInput: GitHubPRInput = { github_token: "", owner: "", repo: "", pr_number: 1 };
 
@@ -39,6 +40,7 @@ function importantToast(event: ReviewLogEvent): AgentToast | null {
 
 export function useReviewSession() {
   const { addReview } = useRecentReviews();
+  const { user } = useAuth();
   const [input, setInput] = useState<GitHubPRInput>(initialInput);
   const [pr, setPr] = useState<PRFetchResponse | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
@@ -52,6 +54,7 @@ export function useReviewSession() {
   const [posting, setPosting] = useState(false);
   const [toasts, setToasts] = useState<AgentToast[]>([]);
   const [lastEventMessage, setLastEventMessage] = useState<string | null>(null);
+  const [aiRuntime, setAiRuntime] = useState<{ provider: string; model: string; source: string } | null>(null);
 
   const activeAgent = useMemo(() => [...events].reverse().find((event) => event.agent)?.agent ?? null, [events]);
   const completedAgents = useMemo(() => new Set(events.filter((event) => String(event.type ?? "").toLowerCase().includes("completed")).map((event) => event.agent).filter(Boolean) as string[]), [events]);
@@ -93,7 +96,7 @@ export function useReviewSession() {
     setError(null);
     setStatus("fetching");
     try {
-      const response = await fetchPR(nextInput);
+      const response = await fetchPR({ ...nextInput, user_id: user?.login ?? undefined });
       setPr(response);
       setApiStatus("connected");
       setStatus("ready");
@@ -111,10 +114,12 @@ export function useReviewSession() {
     setError(null);
     setEvents([]);
     setFindings([]);
+    setAiRuntime(null);
     setSelectedFinding(null);
     setStatus("running");
     try {
-      const [prResponse, runResponse] = await Promise.all([fetchPR(nextInput), runReview(nextInput)]);
+      const reviewInput = { ...nextInput, user_id: user?.login ?? undefined };
+      const [prResponse, runResponse] = await Promise.all([fetchPR(reviewInput), runReview(reviewInput)]);
       setPr(prResponse);
       setApiStatus("connected");
       setJobId(runResponse.job_id);
@@ -143,6 +148,14 @@ export function useReviewSession() {
         setLastEventMessage(event.message ?? null);
         const toast = importantToast(event);
         if (toast) addToast(toast);
+        if (String(event.type ?? "").toLowerCase() === "summary") {
+          const metadata = event.metadata ?? {};
+          setAiRuntime({
+            provider: String(metadata.provider ?? "mock"),
+            model: String(metadata.model ?? "deterministic-mock"),
+            source: String(metadata.source ?? "mock"),
+          });
+        }
 
         const possibleFinding = event.metadata as Finding | undefined;
         if (String(event.type ?? "").toLowerCase().includes("finding") && possibleFinding?.id) {
@@ -202,7 +215,7 @@ export function useReviewSession() {
     try {
       for (const finding of queue) {
         await updateFindingStatus(finding.id, "approved");
-        await postReviewComment(input, finding.id);
+        await postReviewComment({ ...input, user_id: user?.login ?? undefined }, finding.id);
         setFindings((current) => current.map((item) => (item.id === finding.id ? { ...item, status: "posted", approved: true, posted: true } : item)));
       }
       setApiStatus("connected");
@@ -237,6 +250,7 @@ export function useReviewSession() {
     erroredAgents,
     loading,
     lastEventMessage,
+    aiRuntime,
     totalAgents: AGENT_PIPELINE.length,
     setSelectedFile,
     handleFetch,

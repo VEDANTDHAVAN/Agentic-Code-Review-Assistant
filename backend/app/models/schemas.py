@@ -12,6 +12,7 @@ FindingStatus = Literal["pending", "approved", "rejected", "posted"]
 
 class GitHubPRFetchRequest(BaseModel):
     github_token: str | None = None
+    user_id: str | None = None
     owner: str = "demo"
     repo: str = "agentic-demo"
     pr_number: int = 1
@@ -141,3 +142,26 @@ class PullRequestSummary(BaseModel):
     additions: int = 0
     deletions: int = 0
     ci_status: str | None = None
+
+
+AIProviderName = Literal["openai", "openrouter"]
+
+
+class UserAIKeyCreateRequest(BaseModel):
+    provider: AIProviderName
+    api_key: str
+    default_model: str
+
+
+class UserAIKeyTestRequest(BaseModel):
+    provider: AIProviderName
+    api_key: str
+    default_model: str
+
+
+class UserAIKeyPublic(BaseModel):
+    provider: AIProviderName
+    masked_key: str
+    default_model: str
+    connected: bool = True
+    updated_at: str
