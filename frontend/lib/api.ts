@@ -53,6 +53,16 @@ export function postReviewComment(input: GitHubPRInput, commentId: string): Prom
   });
 }
 
+export async function updateFindingApproval(findingId: string, approved: boolean): Promise<{ ok?: boolean; approved?: boolean; [key: string]: unknown }> {
+  const response = await fetch(`${API_BASE_URL}/review/findings/${encodeURIComponent(findingId)}/approval`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ approved }),
+  });
+
+  return parseResponse(response);
+}
+
 export function createReviewStream(jobId: string): EventSource {
   return new EventSource(`${API_BASE_URL}/review/stream/${encodeURIComponent(jobId)}`);
 }

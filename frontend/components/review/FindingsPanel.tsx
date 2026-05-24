@@ -1,8 +1,10 @@
 "use client";
 
-import { Send } from "lucide-react";
+import { useMemo, useState } from "react";
+import { CheckCheck, Send } from "lucide-react";
 import type { Finding } from "@/lib/types";
 import { FindingCard } from "./FindingCard";
+import { FindingsFilters, type FindingsFilterState } from "./FindingsFilters";
 
 type FindingsPanelProps = {
   findings: Finding[];
@@ -11,29 +13,63 @@ type FindingsPanelProps = {
   posting: boolean;
   onSelectFinding: (finding: Finding) => void;
   onApproveFinding: (id: string, approved: boolean) => void;
+  onApproveAllSafe: () => void;
   onPostApproved: () => void;
 };
 
-export function FindingsPanel({ findings, selectedFindingId, loading, posting, onSelectFinding, onApproveFinding, onPostApproved }: FindingsPanelProps) {
+const initialFilters: FindingsFilterState = { severity: "all", agent: "all", approval: "all" };
+
+export function FindingsPanel({ findings, selectedFindingId, loading, posting, onSelectFinding, onApproveFinding, onApproveAllSafe, onPostApproved }: FindingsPanelProps) {
+  const [filters, setFilters] = useState(initialFilters);
   const readyToPost = findings.filter((finding) => finding.approved && !finding.posted).length;
+  const counters = {
+    total: findings.length,
+    critical: findings.filter((finding) => String(finding.severity).toLowerCase() === "critical").length,
+    high: findings.filter((finding) => String(finding.severity).toLowerCase() === "high").length,
+    approved: findings.filter((finding) => finding.approved).length,
+    posted: findings.filter((finding) => finding.posted).length,
+  };
+
+  const filteredFindings = useMemo(() => findings.filter((finding) => {
+    const severityMatch = filters.severity === "all" || String(finding.severity).toLowerCase() === filters.severity;
+    const agentMatch = filters.agent === "all" || finding.agent === filters.agent;
+    const approvalMatch =
+      filters.approval === "all" ||
+      (filters.approval === "approved" && finding.approved && !finding.posted) ||
+      (filters.approval === "rejected" && !finding.approved && !finding.posted) ||
+      (filters.approval === "posted" && finding.posted);
+    return severityMatch && agentMatch && approvalMatch;
+  }), [findings, filters]);
 
   return (
-    <section className="flex min-h-[520px] flex-col rounded-lg border border-border bg-panel">
-      <div className="flex items-center justify-between gap-3 border-b border-border p-4">
-        <div>
-          <h2 className="text-sm font-semibold text-white">Review findings</h2>
-          <p className="mt-1 text-xs text-slate-500">{findings.length ? `${findings.length} findings · ${readyToPost} approved` : "Findings will appear after the run completes."}</p>
+    <section className="flex h-full min-h-0 flex-col">
+      <div className="space-y-3 border-b border-border p-4">
+        <div className="grid grid-cols-5 gap-2">
+          {Object.entries(counters).map(([label, value]) => (
+            <div key={label} className="rounded-md border border-border bg-panel-strong p-2 text-center">
+              <div className="text-base font-semibold text-foreground">{value}</div>
+              <div className="text-[10px] uppercase tracking-wide text-muted">{label}</div>
+            </div>
+          ))}
         </div>
-        <button className="inline-flex h-9 items-center gap-2 rounded-md bg-cyan-400 px-3 text-sm font-semibold text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-50" disabled={readyToPost === 0 || posting} onClick={onPostApproved}>
-          <Send className="h-4 w-4" />
-          {posting ? "Posting" : "Post Approved"}
-        </button>
+        <FindingsFilters findings={findings} filters={filters} onChange={setFilters} />
+        <div className="flex flex-wrap gap-2">
+          <button className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-panel-strong px-3 text-sm font-semibold text-foreground hover:border-primary/60 disabled:opacity-50" onClick={onApproveAllSafe} disabled={posting || findings.length === 0}>
+            <CheckCheck className="h-4 w-4" />
+            Approve All Safe
+          </button>
+          <button className="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-semibold text-white hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50" disabled={readyToPost === 0 || posting} onClick={onPostApproved}>
+            <Send className="h-4 w-4" />
+            {posting ? "Posting" : `Post Approved (${readyToPost})`}
+          </button>
+        </div>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-3 overflow-auto p-4 scrollbar-thin">
-        {loading && findings.length === 0 ? <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-slate-500">Agents are producing review suggestions.</div> : null}
-        {!loading && findings.length === 0 ? <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-slate-500">No findings yet.</div> : null}
-        {findings.map((finding) => (
+      <div className="min-h-0 flex-1 space-y-2 overflow-auto p-3 scrollbar-thin">
+        {loading && findings.length === 0 ? <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted">Agents are producing review suggestions.</div> : null}
+        {!loading && findings.length === 0 ? <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted">No findings yet.</div> : null}
+        {findings.length > 0 && filteredFindings.length === 0 ? <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted">No findings match the current filters.</div> : null}
+        {filteredFindings.map((finding) => (
           <FindingCard key={finding.id} finding={finding} selected={selectedFindingId === finding.id} onSelect={onSelectFinding} onApprove={onApproveFinding} />
         ))}
       </div>
