@@ -8,7 +8,7 @@ type PRMetadataProps = {
 };
 
 function metadataFromResponse(pr: PRFetchResponse | null): PRMetadataType | undefined {
-  return pr?.pr_metadata ?? pr?.metadata;
+  return pr?.metadata ?? pr?.pr_metadata;
 }
 
 export function PRMetadata({ pr }: PRMetadataProps) {
@@ -33,7 +33,7 @@ export function PRMetadata({ pr }: PRMetadataProps) {
           </div>
           <h2 className="truncate text-lg font-semibold text-white">{metadata.title ?? "Untitled pull request"}</h2>
           <p className="mt-1 text-sm text-slate-400">
-            {metadata.author ? `Opened by ${metadata.author}` : "Author unavailable"} · {metadata.state ?? "unknown"} · {files.length} changed file(s)
+            {metadata.author ? `Opened by ${metadata.author}` : "Author unavailable"} | {metadata.state ?? "unknown"} | {metadata.changed_files ?? files.length} changed file(s)
           </p>
         </div>
         {typeof metadata.html_url === "string" && metadata.html_url ? (
@@ -46,6 +46,8 @@ export function PRMetadata({ pr }: PRMetadataProps) {
       <div className="mt-4 flex flex-wrap gap-2">
         <span className="rounded-md border border-border bg-[#090f1b] px-3 py-1.5 text-xs text-slate-300">Base: {metadata.base_branch ?? "unknown"}</span>
         <span className="rounded-md border border-border bg-[#090f1b] px-3 py-1.5 text-xs text-slate-300">Head: {metadata.head_branch ?? "unknown"}</span>
+        <span className="rounded-md border border-border bg-[#090f1b] px-3 py-1.5 text-xs text-emerald-200">+{metadata.additions ?? 0}</span>
+        <span className="rounded-md border border-border bg-[#090f1b] px-3 py-1.5 text-xs text-rose-200">-{metadata.deletions ?? 0}</span>
       </div>
     </section>
   );

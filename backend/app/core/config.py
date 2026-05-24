@@ -6,6 +6,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     app_name: str = "Agentic Code Review Assistant"
     database_path: str = "data/reviews.db"
+    backend_port: int = 8000
+    frontend_url: str = "http://localhost:3000"
+    demo_mode: bool = False
     openai_api_key: str | None = None
     gemini_api_key: str | None = None
     anthropic_api_key: str | None = None
