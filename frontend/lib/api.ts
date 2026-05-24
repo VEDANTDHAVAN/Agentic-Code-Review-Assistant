@@ -1,5 +1,5 @@
 import { API_BASE_URL } from "./constants";
-import type { GitHubPRInput, PRFetchResponse, ReviewResults } from "./types";
+import type { AuthState, GitHubPRInput, PRFetchResponse, PullRequestSummary, RepositorySummary, ReviewResults } from "./types";
 
 async function parseResponse<T>(response: Response): Promise<T> {
   const text = await response.text();
@@ -16,6 +16,7 @@ async function parseResponse<T>(response: Response): Promise<T> {
 async function postJSON<TResponse, TPayload>(path: string, payload: TPayload): Promise<TResponse> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
@@ -23,16 +24,33 @@ async function postJSON<TResponse, TPayload>(path: string, payload: TPayload): P
   return parseResponse<TResponse>(response);
 }
 
+async function getClerkGitHubToken(): Promise<string | null> {
+  try {
+    const response = await fetch("/api/github-token", { credentials: "include" });
+    if (!response.ok) return null;
+    const data = (await response.json()) as { token?: string };
+    return data.token ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function withGithubToken(input: GitHubPRInput): Promise<GitHubPRInput> {
+  if (input.github_token) return input;
+  const token = await getClerkGitHubToken();
+  return token ? { ...input, github_token: token } : input;
+}
+
 export function fetchPR(input: GitHubPRInput): Promise<PRFetchResponse> {
-  return postJSON<PRFetchResponse, GitHubPRInput>("/github/pr/fetch", input);
+  return withGithubToken(input).then((payload) => postJSON<PRFetchResponse, GitHubPRInput>("/github/pr/fetch", payload));
 }
 
 export function runReview(input: GitHubPRInput): Promise<{ job_id: string }> {
-  return postJSON<{ job_id: string }, GitHubPRInput>("/review/run", input);
+  return withGithubToken(input).then((payload) => postJSON<{ job_id: string }, GitHubPRInput>("/review/run", payload));
 }
 
 export async function getReviewResults(jobId: string): Promise<ReviewResults> {
-  const response = await fetch(`${API_BASE_URL}/review/results/${encodeURIComponent(jobId)}`);
+  const response = await fetch(`${API_BASE_URL}/review/results/${encodeURIComponent(jobId)}`, { credentials: "include" });
   const data = await parseResponse<unknown>(response);
 
   if (Array.isArray(data)) {
@@ -47,15 +65,18 @@ export async function getReviewResults(jobId: string): Promise<ReviewResults> {
 }
 
 export function postReviewComment(input: GitHubPRInput, commentId: string): Promise<{ ok?: boolean; [key: string]: unknown }> {
-  return postJSON("/review/comment/post", {
-    ...input,
-    comment_id: commentId,
-  });
+  return withGithubToken(input).then((payload) =>
+    postJSON("/review/comment/post", {
+      ...payload,
+      comment_id: commentId,
+    }),
+  );
 }
 
 export async function updateFindingApproval(findingId: string, approved: boolean): Promise<{ ok?: boolean; approved?: boolean; [key: string]: unknown }> {
   const response = await fetch(`${API_BASE_URL}/review/findings/${encodeURIComponent(findingId)}/approval`, {
     method: "PATCH",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ approved }),
   });
@@ -65,4 +86,26 @@ export async function updateFindingApproval(findingId: string, approved: boolean
 
 export function createReviewStream(jobId: string): EventSource {
   return new EventSource(`${API_BASE_URL}/review/stream/${encodeURIComponent(jobId)}`);
+}
+
+export async function getAuthMe(): Promise<AuthState> {
+  const response = await fetch(`${API_BASE_URL}/auth/github/me`, { credentials: "include" });
+  return parseResponse<AuthState>(response);
+}
+
+export async function logout(): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/auth/logout`, { method: "POST", credentials: "include" });
+  await parseResponse(response);
+}
+
+export async function listRepositories(): Promise<RepositorySummary[]> {
+  const response = await fetch(`${API_BASE_URL}/github/repositories`, { credentials: "include" });
+  const data = await parseResponse<{ repositories?: RepositorySummary[] }>(response);
+  return data.repositories ?? [];
+}
+
+export async function listPullRequests(owner: string, repo: string): Promise<PullRequestSummary[]> {
+  const response = await fetch(`${API_BASE_URL}/github/repositories/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls`, { credentials: "include" });
+  const data = await parseResponse<{ pull_requests?: PullRequestSummary[] }>(response);
+  return data.pull_requests ?? [];
 }

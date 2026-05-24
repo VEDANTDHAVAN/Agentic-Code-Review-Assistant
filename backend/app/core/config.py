@@ -9,6 +9,11 @@ class Settings(BaseSettings):
     backend_port: int = 8000
     frontend_url: str = "http://localhost:3000"
     demo_mode: bool = False
+    github_oauth_client_id: str | None = None
+    github_oauth_client_secret: str | None = None
+    github_oauth_callback_url: str = "http://localhost:8000/auth/github/callback"
+    session_cookie_name: str = "acra_session"
+    session_secret_key: str = "dev-session-secret-change-me"
     openai_api_key: str | None = None
     gemini_api_key: str | None = None
     anthropic_api_key: str | None = None

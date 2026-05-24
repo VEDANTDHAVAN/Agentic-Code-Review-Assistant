@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 from app.agents.bug import BugDetectionAgent
@@ -17,6 +17,7 @@ from app.agents.pr_fetcher import PRFetcherAgent
 from app.agents.security import SecurityReviewAgent
 from app.agents.summary import SummaryAgent
 from app.models.schemas import ApprovalRequest, LogEvent, PostCommentRequest, ReviewResultsResponse, ReviewRunRequest
+from app.services.auth_service import token_from_request
 from app.services.github_client import GitHubClient
 from app.services.storage import storage
 
@@ -67,8 +68,9 @@ async def run_pipeline(job_id: str, payload: ReviewRunRequest) -> None:
 
 
 @router.post("/run")
-async def run_review(payload: ReviewRunRequest, background_tasks: BackgroundTasks):
+async def run_review(payload: ReviewRunRequest, background_tasks: BackgroundTasks, request: Request):
     job_id = str(uuid.uuid4())
+    payload.github_token = payload.github_token or token_from_request(request)
     storage.create_job(job_id, payload.owner, payload.repo, payload.pr_number)
     background_tasks.add_task(run_pipeline, job_id, payload)
     return {"job_id": job_id}
@@ -114,13 +116,13 @@ async def update_approval(finding_id: str, payload: ApprovalRequest):
 
 
 @router.post("/comment/post")
-async def post_comment(payload: PostCommentRequest):
+async def post_comment(payload: PostCommentRequest, request: Request):
     finding = storage.get_finding(payload.comment_id)
     if not finding:
         raise HTTPException(status_code=404, detail="Finding not found")
     if not finding.approved:
         raise HTTPException(status_code=400, detail="Finding must be approved before posting")
-    client = GitHubClient(payload.github_token)
+    client = GitHubClient(payload.github_token or token_from_request(request))
     try:
         result = await client.post_finding_comment(payload.owner, payload.repo, payload.pr_number, finding)
         storage.update_finding_flags(finding.id, posted=True)
