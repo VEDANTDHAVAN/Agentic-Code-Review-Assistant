@@ -25,7 +25,7 @@ export function Dashboard({ initialReviewInput = initialInput }: { initialReview
   const { reviews } = useRecentReviews();
   const [rightTab, setRightTab] = useState<RightTab>("findings");
   const criticalFindings = reviews.reduce((count, review) => count + (review.results?.findings ?? []).filter((finding) => String(finding.severity).toLowerCase() === "critical").length, 0);
-  const pendingComments = session.findings.filter((finding) => finding.approved && !finding.posted).length;
+  const pendingComments = session.findings.filter((finding) => (finding.status ?? (finding.posted ? "posted" : finding.approved ? "approved" : "pending")) === "approved").length;
 
   const tabs: Array<{ id: RightTab; label: string; count?: number }> = [
     { id: "findings", label: "Findings", count: session.findings.length },

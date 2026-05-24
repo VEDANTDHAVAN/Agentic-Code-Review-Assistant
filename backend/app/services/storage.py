@@ -53,6 +53,7 @@ class Storage:
                   code_snippet TEXT,
                   approved INTEGER NOT NULL DEFAULT 0,
                   posted INTEGER NOT NULL DEFAULT 0,
+                  status TEXT NOT NULL DEFAULT 'pending',
                   FOREIGN KEY(job_id) REFERENCES review_jobs(id)
                 );
                 CREATE TABLE IF NOT EXISTS logs (
@@ -78,6 +79,11 @@ class Storage:
                 );
                 """
             )
+            columns = {row["name"] for row in conn.execute("PRAGMA table_info(findings)").fetchall()}
+            if "status" not in columns:
+                conn.execute("ALTER TABLE findings ADD COLUMN status TEXT NOT NULL DEFAULT 'pending'")
+            conn.execute("UPDATE findings SET status = 'posted' WHERE posted = 1")
+            conn.execute("UPDATE findings SET status = 'approved' WHERE posted = 0 AND approved = 1")
 
     def create_job(self, job_id: str, owner: str, repo: str, pr_number: int) -> None:
         with self.connect() as conn:
@@ -148,8 +154,8 @@ class Storage:
                 conn.execute(
                     """
                     INSERT OR REPLACE INTO findings
-                    (id, job_id, agent, file_path, line_number, severity, title, explanation, suggestion, code_snippet, approved, posted)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (id, job_id, agent, file_path, line_number, severity, title, explanation, suggestion, code_snippet, approved, posted, status)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         finding.id,
@@ -164,6 +170,7 @@ class Storage:
                         finding.code_snippet,
                         int(finding.approved),
                         int(finding.posted),
+                        finding.status,
                     ),
                 )
 
@@ -183,6 +190,7 @@ class Storage:
                 code_snippet=row["code_snippet"],
                 approved=bool(row["approved"]),
                 posted=bool(row["posted"]),
+                status=row["status"],
             )
             for row in rows
         ]
@@ -204,17 +212,34 @@ class Storage:
             code_snippet=row["code_snippet"],
             approved=bool(row["approved"]),
             posted=bool(row["posted"]),
+            status=row["status"],
         )
 
     def update_finding_flags(self, finding_id: str, **flags: Any) -> None:
-        allowed = {"approved", "posted"}
-        updates = [(key, int(value)) for key, value in flags.items() if key in allowed]
+        if "posted" in flags and flags["posted"]:
+            flags["status"] = "posted"
+            flags["approved"] = True
+        elif "approved" in flags:
+            flags["status"] = "approved" if flags["approved"] else "pending"
+        allowed = {"approved", "posted", "status"}
+        updates = [(key, value if key == "status" else int(value)) for key, value in flags.items() if key in allowed]
         if not updates:
             return
         clause = ", ".join(f"{key} = ?" for key, _ in updates)
         values = [value for _, value in updates] + [finding_id]
         with self.connect() as conn:
             conn.execute(f"UPDATE findings SET {clause} WHERE id = ?", values)
+
+    def update_finding_status(self, finding_id: str, status: str) -> None:
+        if status not in {"approved", "rejected", "posted", "pending"}:
+            raise ValueError("Invalid finding status")
+        approved = status in {"approved", "posted"}
+        posted = status == "posted"
+        with self.connect() as conn:
+            conn.execute(
+                "UPDATE findings SET status = ?, approved = ?, posted = ? WHERE id = ?",
+                (status, int(approved), int(posted), finding_id),
+            )
 
     def save_oauth_session(self, session: dict[str, Any]) -> None:
         now = datetime.utcnow().isoformat()

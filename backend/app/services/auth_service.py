@@ -49,6 +49,9 @@ def session_from_request(request: Request) -> dict | None:
 
 
 def token_from_request(request: Request) -> str | None:
+    authorization = request.headers.get("authorization")
+    if authorization and authorization.lower().startswith("bearer "):
+        return authorization.split(" ", 1)[1].strip()
     session = session_from_request(request)
     if not session:
         return None
