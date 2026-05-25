@@ -63,7 +63,7 @@ async def github_callback(code: str):
         settings.session_cookie_name,
         session_id,
         httponly=True,
-        secure=False,
+        secure=settings.env == "production",
         samesite="lax",
         max_age=60 * 60 * 24 * 14,
     )

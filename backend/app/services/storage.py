@@ -348,4 +348,13 @@ class Storage:
             conn.execute("DELETE FROM user_ai_keys WHERE user_id = ? AND provider = ?", (user_id, provider))
 
 
-storage = Storage()
+def create_storage():
+    settings = get_settings()
+    if settings.database_url:
+        from app.services.sqlalchemy_storage import SQLAlchemyStorage
+
+        return SQLAlchemyStorage()
+    return Storage()
+
+
+storage = create_storage()
