@@ -8,6 +8,20 @@ This guide deploys the production MVP with:
 - Auth: Clerk with GitHub social OAuth
 - AI: BYOK OpenAI/OpenRouter plus optional server fallback keys
 
+## Public UX Before Login
+
+The production root route `/` is intentionally public. It explains what PRism AI does, how the AI review workflow works, required GitHub scopes, Clerk + GitHub OAuth setup, prerequisites, and security expectations.
+
+Keep `/setup-guide` public so developers and evaluators can inspect setup requirements before authenticating. Protected app routes such as `/dashboard`, `/repositories`, `/pull-requests`, and `/settings` remain behind Clerk auth.
+
+After a user signs in, the dashboard onboarding checklist should guide them through:
+
+- GitHub connected
+- Required scopes verified
+- AI provider configured or mock mode enabled
+- Repository selected
+- First PR review completed
+
 ## A. Backend On Render
 
 1. Create a new Render Web Service from this repository.
@@ -127,6 +141,24 @@ workflow
 
 7. Copy the GitHub OAuth Client ID and Secret into Clerk.
 8. Users must reconnect GitHub after scope changes.
+
+Required MVP scopes:
+
+```text
+read:user
+user:email
+repo
+workflow
+```
+
+Why they are needed:
+
+- `read:user`: display and verify GitHub profile information.
+- `user:email`: identify the signed-in user email.
+- `repo`: read repositories, PR metadata, diffs, changed files, and post approved PR/issue comments.
+- `workflow`: reserved for future GitHub Actions and CI signal analysis.
+
+Production SaaS note: `repo` is broad because GitHub OAuth scopes are broad. For a real team SaaS rollout, keep Clerk for identity but migrate repository access to a GitHub App with selected repository installation and fine-grained permissions.
 
 ## E. Post-Deployment Test
 
