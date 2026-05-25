@@ -535,11 +535,15 @@ No scopes detected:
 
 ## Known Limitations
 
-- GitHub App production mode is scaffolded but not implemented.
-- Review history currently uses frontend localStorage fallback.
-- Repository and PR listing fetch up to 100 items.
-- AI review logic is currently rule-based with provider abstraction for future LLM enhancement.
-- GitLab integration is not implemented yet.
+- GitHub repository access currently uses Clerk's GitHub OAuth social connection in MVP mode. GitHub App installation tokens are documented and scaffolded conceptually, but the production GitHub App flow is not implemented yet.
+- The MVP requires broad GitHub OAuth `repo` scope to read private repositories, fetch PR diffs, and post approved comments. A production SaaS rollout should migrate to a GitHub App for selected-repository, least-privilege permissions.
+- Review history is still primarily stored in frontend localStorage for the UI. Review jobs, findings, logs, OAuth sessions, and BYOK keys are database-backed, but a full server-side review history API is not yet implemented.
+- Repository and pull request listing currently uses GitHub REST pagination limits suitable for an MVP. Very large GitHub accounts or organizations may need deeper pagination, search, caching, and installation-level sync.
+- The AI review pipeline combines deterministic rule-based agents with optional OpenAI/OpenRouter summary enhancement. It is useful for demos and early validation, but it is not a substitute for mature static analysis, dependency scanning, or human security review.
+- Line-level GitHub comments depend on patch line mapping. When an exact line cannot be posted, the backend falls back to a general PR issue comment.
+- BYOK keys are encrypted server-side, but user identity is still bridged pragmatically from the current Clerk user context. A production multi-tenant system should verify Clerk JWTs on the backend and enforce tenant-level authorization.
+- PostgreSQL/Supabase production storage and Alembic migrations are available, while SQLite remains the local development fallback. Data migration from existing local SQLite files to Postgres is not automated.
+- SSE streaming is implemented for live logs, but jobs currently run as FastAPI background tasks. Production scale should move long-running reviews to a worker queue such as Celery, RQ, Dramatiq, or a managed job system.
 
 ## Screenshot Placeholders
 
