@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: prism-ai-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: ENV
+        value: production
+      - key: GITHUB_AUTH_MODE
+        value: clerk_oauth
+      - key: DEFAULT_AI_PROVIDER
+        value: openai
+      - key: DEFAULT_OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: DEFAULT_OPENROUTER_MODEL
+        value: openai/gpt-4o-mini
+      - key: OPENROUTER_APP_NAME
+        value: PRism AI
+      - key: DATABASE_URL
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: BACKEND_URL
+        sync: false
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: CLERK_JWKS_URL
+        sync: false
+      - key: GITHUB_WEBHOOK_SECRET
+        sync: false
+      - key: APP_ENCRYPTION_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false

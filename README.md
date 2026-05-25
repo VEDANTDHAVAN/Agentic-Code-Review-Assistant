@@ -43,12 +43,12 @@ flowchart TD
     Pipeline --> Smells["CodeSmellAgent"]
     Pipeline --> Summary["SummaryAgent"]
 
-    Pipeline --> SQLite["SQLite Storage<br/>jobs, logs, findings, sessions"]
-    SQLite --> SSE
+    Pipeline --> Storage["Storage Layer<br/>SQLite dev / PostgreSQL prod"]
+    Storage --> SSE
     SSE --> Frontend
 
     Frontend -->|Approve / Reject Findings| FastAPI
-    FastAPI --> SQLite
+    FastAPI --> Storage
 
     Frontend -->|Post Approved Comments| FastAPI
     FastAPI -->|PR Review Comment / Issue Comment| GitHub
@@ -205,30 +205,37 @@ If a future merge conflict resolver is enabled:
 Root `.env`:
 
 ```text
-DATABASE_PATH=/data/reviews.db
-CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
-BACKEND_PORT=8000
+ENV=development
+APP_VERSION=0.1.0
+BACKEND_URL=http://localhost:8000
 FRONTEND_URL=http://localhost:3000
+BACKEND_PORT=8000
+CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+DATABASE_PATH=data/reviews.db
+DATABASE_URL=
 DEMO_MODE=false
 GITHUB_AUTH_MODE=clerk_oauth
+GITHUB_WEBHOOK_SECRET=
 
+CLERK_SECRET_KEY=
+CLERK_JWKS_URL=
 GITHUB_OAUTH_CLIENT_ID=
 GITHUB_OAUTH_CLIENT_SECRET=
 GITHUB_OAUTH_CALLBACK_URL=http://localhost:8000/auth/github/callback
 SESSION_SECRET_KEY=change-me-use-a-long-random-string
 SESSION_COOKIE_NAME=acra_session
+
 APP_ENCRYPTION_KEY=change-me-use-a-long-random-string
-DEFAULT_AI_PROVIDER=openai
-DEFAULT_OPENAI_MODEL=gpt-4o-mini
-DEFAULT_OPENROUTER_MODEL=openai/gpt-4o-mini
 OPENAI_API_KEY=
 OPENROUTER_API_KEY=
 OPENROUTER_APP_URL=http://localhost:3000
 OPENROUTER_APP_NAME=PRism AI
+DEFAULT_AI_PROVIDER=openai
+DEFAULT_OPENAI_MODEL=gpt-4o-mini
+DEFAULT_OPENROUTER_MODEL=openai/gpt-4o-mini
 
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
-CLERK_SECRET_KEY=
 ```
 
 Frontend `.env.local`:
@@ -275,6 +282,60 @@ Workflow:
 12. Approve or reject findings.
 13. Post approved comments to GitHub.
 
+## Production Deployment
+
+PRism AI is prepared for:
+
+- Frontend on Vercel
+- Backend on Render
+- Database on Supabase Postgres or Render Postgres
+
+Production backend mode uses SQLAlchemy with PostgreSQL when `DATABASE_URL` is set. SQLite remains the local development fallback when `DATABASE_URL` is empty.
+
+Run database migrations before opening production traffic:
+
+```bash
+cd backend
+alembic upgrade head
+```
+
+Production CORS is intentionally strict: when `ENV=production`, FastAPI only allows `FRONTEND_URL`.
+
+Deployment files:
+
+- `backend/Dockerfile`
+- `render.yaml`
+- `.github/workflows/ci.yml`
+- `DEPLOYMENT.md`
+
+See `DEPLOYMENT.md` for the complete Render, Vercel, Clerk, and database checklist.
+
+### Production Environment Highlights
+
+Backend:
+
+```text
+ENV=production
+BACKEND_URL=https://your-render-service.onrender.com
+FRONTEND_URL=https://your-vercel-app.vercel.app
+DATABASE_URL=postgresql://...
+CLERK_SECRET_KEY=sk_live_...
+CLERK_JWKS_URL=https://your-clerk-domain/.well-known/jwks.json
+GITHUB_AUTH_MODE=clerk_oauth
+GITHUB_WEBHOOK_SECRET=...
+APP_ENCRYPTION_KEY=<long random secret>
+OPENAI_API_KEY=
+OPENROUTER_API_KEY=
+```
+
+Frontend:
+
+```text
+NEXT_PUBLIC_API_BASE_URL=https://your-render-service.onrender.com
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_...
+CLERK_SECRET_KEY=sk_live_...
+```
+
 ## BYOK AI Provider Support
 
 PRism AI supports bring-your-own-key AI configuration for:
@@ -293,6 +354,7 @@ APP_ENCRYPTION_KEY=change-me-use-a-long-random-string
 ```
 
 The backend encrypts user AI keys before storing them in SQLite. If `APP_ENCRYPTION_KEY` is missing, saving keys fails with a clear error. The app does not silently store plaintext.
+In production, BYOK records are stored in PostgreSQL through SQLAlchemy and Alembic-managed schema migrations.
 
 ### OpenAI Setup
 
