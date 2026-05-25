@@ -10,6 +10,7 @@ import { GitHubForm } from "@/components/github/GitHubForm";
 import { GitHubPermissionStatus } from "@/components/github/GitHubPermissionStatus";
 import { PRMetadata } from "@/components/github/PRMetadata";
 import { AppShell } from "@/components/layout/AppShell";
+import { OnboardingChecklist } from "@/components/dashboard/OnboardingChecklist";
 import { DiffViewer } from "@/components/review/DiffViewer";
 import { FindingsPanel } from "@/components/review/FindingsPanel";
 import { ReviewSummary } from "@/components/review/ReviewSummary";
@@ -17,7 +18,7 @@ import { useReviewSession } from "@/hooks/useReviewSession";
 import { useAuth } from "@/hooks/useAuth";
 import { useRecentReviews } from "@/hooks/useRecentReviews";
 import { listAIKeys } from "@/lib/api";
-import type { UserAIKeyPublic } from "@/lib/types";
+import type { GitHubPermissionStatus as GitHubPermissionStatusType, UserAIKeyPublic } from "@/lib/types";
 
 const initialInput = { github_token: "", owner: "", repo: "", pr_number: 1 };
 type RightTab = "findings" | "timeline" | "context";
@@ -29,6 +30,7 @@ export function Dashboard({ initialReviewInput = initialInput, autoFetchInitial 
   const [rightTab, setRightTab] = useState<RightTab>("findings");
   const [savedAIKeys, setSavedAIKeys] = useState<UserAIKeyPublic[]>([]);
   const [aiProviderError, setAIProviderError] = useState<string | null>(null);
+  const [permissionStatus, setPermissionStatus] = useState<GitHubPermissionStatusType | null>(null);
   const didAutoFetch = useRef(false);
   const handleFetchRef = useRef(session.handleFetch);
   const criticalFindings = reviews.reduce((count, review) => count + (review.results?.findings ?? []).filter((finding) => String(finding.severity).toLowerCase() === "critical").length, 0);
@@ -106,7 +108,16 @@ export function Dashboard({ initialReviewInput = initialInput, autoFetchInitial 
           {displayedAIRuntime?.source === "mock" || !displayedAIRuntime ? <p className="mt-1 text-xs text-muted">Mock mode is used until a BYOK or server AI key is configured.</p> : null}
           {aiProviderError ? <p className="mt-1 text-xs text-danger">{aiProviderError}</p> : null}
         </section>
-        <GitHubPermissionStatus />
+        <OnboardingChecklist
+          githubConnected={Boolean(user?.login)}
+          permissions={permissionStatus}
+          aiKeys={savedAIKeys}
+          repositorySelected={Boolean(session.pr || initialReviewInput.owner)}
+          reviewCompleted={reviews.length > 0 || session.status === "completed"}
+        />
+        <div id="github-permissions">
+          <GitHubPermissionStatus onStatusChange={setPermissionStatus} />
+        </div>
         <GitHubForm initialInput={initialReviewInput} loading={session.loading || session.posting} onFetch={session.handleFetch} onRun={session.handleRun} />
 
         {session.error ? <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-700 dark:text-rose-100">{session.error}</div> : null}

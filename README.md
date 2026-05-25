@@ -18,6 +18,41 @@ Core flow:
 6. Approve or reject findings.
 7. Post approved comments to GitHub.
 
+## Public Landing And Onboarding
+
+Production visitors who land on `/` now see a public PRism AI landing page instead of a blank login wall. The page explains:
+
+- What PRism AI does.
+- How the AI pull request review workflow works.
+- Which GitHub OAuth scopes are required.
+- Why `repo` scope is needed for the MVP.
+- How Clerk and GitHub OAuth fit together.
+- How to start with GitHub sign-in or the setup guide.
+
+Authenticated users visiting `/` are redirected to `/dashboard`. Protected app routes still require Clerk authentication.
+
+Public routes:
+
+- `/`
+- `/setup-guide`
+
+Authenticated app routes:
+
+- `/dashboard`
+- `/repositories`
+- `/repositories/[owner]/[repo]/pull-requests`
+- `/repositories/[owner]/[repo]/pull-requests/[prNumber]`
+- `/pull-requests`
+- `/settings`
+
+After login, the dashboard shows an onboarding checklist:
+
+- GitHub connected
+- Required scopes verified
+- AI provider configured or mock mode enabled
+- Repository selected
+- First PR review completed
+
 ## Architecture Flowchart
 
 ```mermaid

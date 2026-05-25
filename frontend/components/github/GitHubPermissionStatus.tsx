@@ -1,33 +1,40 @@
 "use client";
 
 import { AlertTriangle, CheckCircle2, RefreshCw } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { checkGitHubPermissions } from "@/lib/api";
 import type { GitHubPermissionStatus as PermissionStatus } from "@/lib/types";
 
-export function GitHubPermissionStatus() {
+type GitHubPermissionStatusProps = {
+  onStatusChange?: (status: PermissionStatus | null) => void;
+};
+
+export function GitHubPermissionStatus({ onStatusChange }: GitHubPermissionStatusProps) {
   const [status, setStatus] = useState<PermissionStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      setStatus(await checkGitHubPermissions());
+      const nextStatus = await checkGitHubPermissions();
+      setStatus(nextStatus);
+      onStatusChange?.(nextStatus);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to check GitHub permissions.");
+      onStatusChange?.(null);
     } finally {
       setLoading(false);
     }
-  }
+  }, [onStatusChange]);
 
   useEffect(() => {
     const id = window.setTimeout(() => {
       void load();
     }, 0);
     return () => window.clearTimeout(id);
-  }, []);
+  }, [load]);
 
   const ok = Boolean(status?.has_repo_scope && status?.can_post_comments);
 
@@ -48,6 +55,7 @@ export function GitHubPermissionStatus() {
               <div className="mt-2 space-y-1 text-xs text-muted">
                 <p>Scopes: {status.scopes.length ? status.scopes.join(", ") : "none detected"}</p>
                 {status.warnings.map((warning) => <p key={warning}>- {warning}</p>)}
+                {!status.has_repo_scope ? <p className="font-medium text-amber-800 dark:text-amber-100">GitHub access is limited. PRism AI needs repo scope to read PR diffs and post review comments.</p> : null}
                 {!ok ? <p>Reconnect GitHub in Clerk after updating scopes.</p> : null}
               </div>
             ) : null}
