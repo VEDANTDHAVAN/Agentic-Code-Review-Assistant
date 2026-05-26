@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { AlertTriangle, CheckCircle2, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { checkGitHubPermissions } from "@/lib/api";
@@ -56,7 +57,15 @@ export function GitHubPermissionStatus({ onStatusChange }: GitHubPermissionStatu
                 <p>Scopes: {status.scopes.length ? status.scopes.join(", ") : "none detected"}</p>
                 {status.warnings.map((warning) => <p key={warning}>- {warning}</p>)}
                 {!status.has_repo_scope ? <p className="font-medium text-amber-800 dark:text-amber-100">GitHub access is limited. PRism AI needs repo scope to read PR diffs and post review comments.</p> : null}
-                {!ok ? <p>Reconnect GitHub in Clerk after updating scopes.</p> : null}
+                {!ok ? (
+                  <p>
+                    Add the required scopes in Clerk/GitHub OAuth, then reconnect GitHub.{" "}
+                    <Link className="font-semibold text-primary hover:underline" href="/setup-guide">
+                      Open setup guide
+                    </Link>
+                    .
+                  </p>
+                ) : null}
               </div>
             ) : null}
           </div>
