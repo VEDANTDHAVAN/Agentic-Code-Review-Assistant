@@ -30,6 +30,9 @@ export default function SetupGuidePage() {
             <li>5. Add your local and production frontend URLs to Clerk allowed redirect/origin settings.</li>
             <li>6. Copy `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY` into your frontend/backend environments.</li>
           </ol>
+          <p className="mt-4 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm leading-6 text-amber-800 dark:text-amber-100">
+            Email, password, Google, or magic-link sign-in only authenticates the PRism AI user. It does not provide GitHub repository scopes. Those users must also connect GitHub through Clerk before repositories, PR diffs, or comment posting can work.
+          </p>
         </GuideSection>
 
         <GuideSection title="GitHub OAuth App Setup">
@@ -105,6 +108,7 @@ pnpm dev`}</pre>
 
         <GuideSection title="Common Errors">
           <ul className="space-y-3 text-sm leading-6 text-muted">
+            <li><span className="font-semibold text-foreground">GitHub not connected:</span> the user may have signed in with email or another provider. Connect GitHub in Clerk, then refresh permission status.</li>
             <li><span className="font-semibold text-foreground">No repositories found:</span> reconnect GitHub after adding `repo` scope.</li>
             <li><span className="font-semibold text-foreground">Comment posting denied:</span> the token is missing `repo` scope or does not have repository access.</li>
             <li><span className="font-semibold text-foreground">BYOK save failed:</span> set `APP_ENCRYPTION_KEY` and restart the backend.</li>

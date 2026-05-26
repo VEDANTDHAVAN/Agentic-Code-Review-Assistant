@@ -107,6 +107,8 @@ flowchart TD
 - The frontend retrieves the GitHub token through a Next.js server route and forwards it in memory to FastAPI.
 - Tokens are not stored in browser localStorage.
 
+If a user signs in with email, password, Google, or magic link, Clerk authenticates the PRism AI account but does not provide GitHub repository scopes. That user must also connect GitHub through Clerk before PRism AI can list repositories, fetch PR diffs, or post approved review comments.
+
 This mode is convenient for demos and hackathon-style MVPs, but the `repo` OAuth scope is broad.
 
 ### Production Mode: GitHub App
@@ -532,6 +534,7 @@ No scopes detected:
 
 - Some token types may omit `x-oauth-scopes`.
 - Use the dashboard GitHub Permission Status card and verify Clerk token configuration.
+- If the user signed in with email or another non-GitHub provider, connect GitHub separately in Clerk. Email login alone cannot provide GitHub OAuth scopes.
 
 ## Known Limitations
 

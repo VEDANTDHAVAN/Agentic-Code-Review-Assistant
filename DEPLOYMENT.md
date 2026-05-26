@@ -14,6 +14,8 @@ The production root route `/` is intentionally public. It explains what PRism AI
 
 Keep `/setup-guide` public so developers and evaluators can inspect setup requirements before authenticating. Protected app routes such as `/dashboard`, `/repositories`, `/pull-requests`, and `/settings` remain behind Clerk auth.
 
+If users sign in with email, password, Google, or magic link, they are authenticated to PRism AI but do not have GitHub OAuth scopes. They must connect GitHub through Clerk before repository listing, PR diff fetching, and approved comment posting can work.
+
 After a user signs in, the dashboard onboarding checklist should guide them through:
 
 - GitHub connected
