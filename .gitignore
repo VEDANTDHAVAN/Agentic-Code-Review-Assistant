@@ -1,5 +1,13 @@
 .npm-cache/
 node_modules/
+.next/
+dist/
+build/
 .venv/
 __pycache__/
+*.pyc
 .env
+.env.local
+*.db
+*.sqlite
+*.sqlite3
